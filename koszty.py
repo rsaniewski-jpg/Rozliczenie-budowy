@@ -1,15 +1,33 @@
 import os
 import pandas as pd
 import streamlit as st
-import openpyxl
 
 st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon="🏗️", layout="centered"
 )
 
+# --- WŁASNY STYL CSS ---
+st.markdown(
+    """
+    <style>
+    div.stButton > button[kind="primary"] {
+        background-color: #0066cc !important;
+        color: white !important;
+        border-color: #0052a3 !important;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #0052a3 !important;
+        color: white !important;
+    }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
 # Pliki do trwałego przechowywania danych
 PLIK_BAZY = "baza_danych.csv"
 PLIK_PRACOWNICY = "baza_pracownikow.csv"
+PLIK_STAWKI = "baza_stawek.csv"
 PLIK_BUDOWY = "baza_budow.csv"
 
 
@@ -17,17 +35,26 @@ PLIK_BUDOWY = "baza_budow.csv"
 def wczytaj_pracownikow():
   if os.path.exists(PLIK_PRACOWNICY):
     df = pd.read_csv(PLIK_PRACOWNICY, dtype=str)
+    # Migracja ze starej bazy opartej na kolumnie 'Pin' na 'Email' i 'Haslo'
+    if "Pin" in df.columns and "Email" not in df.columns:
+      df["Email"] = df["Pracownik"].str.lower().str.replace(" ", "") + "@firma.pl"
+      df = df.rename(columns={"Pin": "Haslo"})
+    if "Email" not in df.columns:
+      df["Email"] = ""
+    if "Haslo" not in df.columns:
+      df["Haslo"] = "1234"
     if "Rola" not in df.columns:
       df["Rola"] = "Pracownik"
-      df.loc[(df["Pin"] == "0000") | (df["Pracownik"] == "Admin"), "Rola"] = (
-          "Admin"
-      )
-      df.to_csv(PLIK_PRACOWNICY, index=False)
+    
+    # Poprawka dla admina
+    df.loc[(df["Email"] == "admin@firma.pl") | (df["Pracownik"] == "Admin"), "Rola"] = "Admin"
+    df.to_csv(PLIK_PRACOWNICY, index=False)
     return df
   else:
     df_domyslne = pd.DataFrame(
         {
-            "Pin": ["1234", "5678", "0000"],
+            "Email": ["jan.kowalski@firma.pl", "adam.nowak@firma.pl", "admin@firma.pl"],
+            "Haslo": ["1234", "5678", "0000"],
             "Pracownik": ["Jan Kowalski", "Adam Nowak", "Admin"],
             "Rola": ["Pracownik", "Pracownik", "Admin"],
         }
@@ -38,6 +65,71 @@ def wczytaj_pracownikow():
 
 def zapisz_pracownikow(df):
   df.to_csv(PLIK_PRACOWNICY, index=False)
+
+
+def wczytaj_stawki():
+  if os.path.exists(PLIK_STAWKI):
+    try:
+      df = pd.read_csv(PLIK_STAWKI)
+      if (
+          "Pracownik" not in df.columns
+          or "Stawka" not in df.columns
+          or "DataOd" not in df.columns
+      ):
+        raise ValueError("Niepoprawna struktura")
+      return df
+    except Exception:
+      pass
+
+  df_stawki_start = pd.DataFrame(
+      {
+          "Pracownik": ["Jan Kowalski", "Adam Nowak", "Admin"],
+          "Stawka": [30.0, 35.0, 50.0],
+          "DataOd": ["2024-01-01", "2024-01-01", "2024-01-01"],
+      }
+  )
+  df_stawki_start.to_csv(PLIK_STAWKI, index=False)
+  return df_stawki_start
+
+
+def zapisz_stawki(df):
+  df.to_csv(PLIK_STAWKI, index=False)
+
+
+def dodaj_stawke_dla_pracownika(pracownik, stawka, data_od):
+  df_s = wczytaj_stawki()
+  nowy_wiersz = pd.DataFrame(
+      {
+          "Pracownik": [pracownik],
+          "Stawka": [float(stawka)],
+          "DataOd": [str(data_od)],
+      }
+  )
+  df_s = pd.concat([df_s, nowy_wiersz], ignore_index=True)
+  df_s = df_s.sort_values(by="DataOd", ascending=True)
+  zapisz_stawki(df_s)
+
+
+def pobierz_stawke_pracownika(nazwa_pracownika, data_wpisu):
+  df_s = wczytaj_stawki()
+  if df_s.empty:
+    return 30.0
+
+  p_stawki = df_s[df_s["Pracownik"] == nazwa_pracownika]
+  if p_stawki.empty:
+    return 30.0
+
+  if data_wpisu is None:
+    return float(p_stawki.iloc[-1]["Stawka"])
+
+  data_wpisu_dt = pd.to_datetime(data_wpisu)
+  p_stawki["DataOd_dt"] = pd.to_datetime(p_stawki["DataOd"])
+  aktywne = p_stawki[p_stawki["DataOd_dt"] <= data_wpisu_dt]
+
+  if aktywne.empty:
+    return float(p_stawki.iloc[0]["Stawka"])
+
+  return float(aktywne.iloc[-1]["Stawka"])
 
 
 def wczytaj_budowy():
@@ -112,11 +204,16 @@ st.title("🏗️ System Rozliczania Czasu Pracy na Budowach")
 # --- PANEL LOGOWANIA ---
 if not st.session_state.zalogowany:
   st.sidebar.header("🔐 Logowanie")
-  pin_input = st.sidebar.text_input("Wpisz swój 4-cyfrowy PIN", type="password")
+  email_input = st.sidebar.text_input("Adres e-mail")
+  haslo_input = st.sidebar.text_input("Hasło", type="password")
 
   if st.sidebar.button("Zaloguj się"):
     df_pracownicy = wczytaj_pracownikow()
-    pasujacy = df_pracownicy[df_pracownicy["Pin"] == pin_input]
+    # Szukamy po mailu (ignorując wielkość liter) i haśle
+    pasujacy = df_pracownicy[
+        (df_pracownicy["Email"].str.lower() == email_input.strip().lower()) & 
+        (df_pracownicy["Haslo"] == haslo_input)
+    ]
 
     if not pasujacy.empty:
       st.session_state.zalogowany = True
@@ -124,15 +221,14 @@ if not st.session_state.zalogowany:
       st.session_state.rola = str(pasujacy.iloc[0]["Rola"]).strip()
       st.rerun()
     else:
-      st.sidebar.error("❌ Błędny PIN!")
+      st.sidebar.error("❌ Błędny e-mail lub hasło!")
 
   st.info(
-      "👈 Wpisz swój PIN w panelu po lewej stronie i kliknij 'Zaloguj się'."
-      "\n\n*(Domyślny PIN administratora to: `0000`)*"
+      "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i kliknij 'Zaloguj się'."
+      "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
   )
   st.stop()
 
-# Użytkownik zalogowany
 zalogowany_pracownik = st.session_state.aktualny_pracownik
 rola_uzytkownika = str(st.session_state.rola).strip()
 
@@ -146,7 +242,6 @@ if st.sidebar.button("Wyloguj się"):
   st.session_state.rola = None
   st.rerun()
 
-# Pobranie aktualnych danych i budów na start
 dane_systemowe = wczytaj_dane()
 lista_budow = wczytaj_budowy()
 
@@ -155,20 +250,69 @@ lista_budow = wczytaj_budowy()
 if rola_uzytkownika == "Admin":
   st.subheader("👑 Panel Administratora")
 
-  menu_admin = st.radio(
-      "Wybierz sekcję:",
-      [
-          "📊 Raport wszystkich wpisów",
-          "👥 Zarządzanie Pracownikami",
-          "🏗️ Zarządzanie Budowami",
-      ],
-      horizontal=True,
-  )
+  if "menu_admin" not in st.session_state:
+    st.session_state.menu_admin = "📊 Raport wszystkich wpisów"
+
+  col_btn1, col_btn2, col_btn3 = st.columns(3)
+
+  with col_btn1:
+    if st.button(
+        "📊 Raport wpisów",
+        use_container_width=True,
+        type=(
+            "primary"
+            if st.session_state.menu_admin == "📊 Raport wszystkich wpisów"
+            else "secondary"
+        ),
+    ):
+      st.session_state.menu_admin = "📊 Raport wszystkich wpisów"
+      st.rerun()
+
+  with col_btn2:
+    if st.button(
+        "👥 Pracownicy",
+        use_container_width=True,
+        type=(
+            "primary"
+            if st.session_state.menu_admin == "👥 Zarządzanie Pracownikami"
+            else "secondary"
+        ),
+    ):
+      st.session_state.menu_admin = "👥 Zarządzanie Pracownikami"
+      st.rerun()
+
+  with col_btn3:
+    if st.button(
+        "🏗️ Budowy",
+        use_container_width=True,
+        type=(
+            "primary"
+            if st.session_state.menu_admin == "🏗️ Zarządzanie Budowami"
+            else "secondary"
+        ),
+    ):
+      st.session_state.menu_admin = "🏗️ Zarządzanie Budowami"
+      st.rerun()
+
   st.markdown("---")
+
+  menu_admin = st.session_state.menu_admin
 
   if menu_admin == "📊 Raport wszystkich wpisów":
     st.markdown("### Raport godzin i kosztów całej firmy")
+
     if not dane_systemowe.empty:
+      c1, c2, c3, c4 = st.columns(4)
+      c1.metric("Łączne godziny", f"{dane_systemowe['Godziny'].sum():.2f} h")
+      c2.metric(
+          "Koszt pracy", f"{dane_systemowe['Koszt pracy (zł)'].sum():.2f} zł"
+      )
+      c3.metric(
+          "Koszt dojazdu", f"{dane_systemowe['Koszt dojazdu (zł)'].sum():.2f} zł"
+      )
+      c4.metric("Łączny koszt", f"{dane_systemowe['Razem (zł)'].sum():.2f} zł")
+      st.markdown("---")
+
       st.dataframe(dane_systemowe, use_container_width=True)
 
 
@@ -198,24 +342,32 @@ if rola_uzytkownika == "Admin":
     df_pracownicy = wczytaj_pracownikow()
 
     with st.form("form_dodaj_pracownika", clear_on_submit=True):
-      nowe_imie = st.text_input("Imię i nazwisko pracownika")
-      nowy_pin = st.text_input("4-cyfrowy PIN", max_chars=4, type="password")
-      wybrana_rola = st.selectbox(
-          "Uprawnienia", ["Pracownik", "Admin"]
-      )
+      c_n1, c_n2 = st.columns(2)
+      with c_n1:
+        nowe_imie = st.text_input("Imię i nazwisko pracownika")
+        nowy_email = st.text_input("Adres e-mail (login)")
+        nowe_haslo = st.text_input("Hasło do logowania", type="password")
+      with c_n2:
+        wybrana_rola = st.selectbox("Uprawnienia", ["Pracownik", "Admin"])
+        poczatkowa_stawka = st.number_input(
+            "Stawka początkowa (zł/h)", min_value=0.0, value=30.0, step=5.0
+        )
+        data_od_stawki = st.date_input(
+            "Obowiązuje od daty", value=pd.Timestamp.today().date()
+        )
+
       submit_pracownik = st.form_submit_button("Dodaj pracownika")
 
       if submit_pracownik:
-        if not nowe_imie or not nowy_pin:
-          st.warning("Uzupełnij imię oraz PIN.")
-        elif len(nowy_pin) < 4:
-          st.error("PIN musi składać się z co najmniej 4 znaków.")
-        elif nowy_pin in df_pracownicy["Pin"].values:
-          st.error("❌ Ten PIN jest już zajęty przez innego pracownika!")
+        if not nowe_imie or not nowy_email or not nowe_haslo:
+          st.warning("Uzupełnij imię, e-mail oraz hasło.")
+        elif nowy_email.lower() in df_pracownicy["Email"].str.lower().values:
+          st.error("❌ Ten adres e-mail jest już zajęty przez innego pracownika!")
         else:
           nowy_wiersz = pd.DataFrame(
               {
-                  "Pin": [nowy_pin],
+                  "Email": [nowy_email.strip().lower()],
+                  "Haslo": [nowe_haslo],
                   "Pracownik": [nowe_imie],
                   "Rola": [wybrana_rola],
               }
@@ -224,16 +376,129 @@ if rola_uzytkownika == "Admin":
               [df_pracownicy, nowy_wiersz], ignore_index=True
           )
           zapisz_pracownikow(df_pracownicy)
-          st.success(
-              f"✅ Pomyślnie dodano pracownika: {nowe_imie} ({wybrana_rola})"
+          dodaj_stawke_dla_pracownika(
+              nowe_imie, poczatkowa_stawka, data_od_stawki
           )
+          st.success(f"✅ Pomyślnie dodano pracownika: {nowe_imie}")
           st.rerun()
 
     st.markdown("---")
-    st.markdown("### Aktualna lista pracowników w systemie")
-    tabela_pokazowa = df_pracownicy.copy()
-    tabela_pokazowa["Pin"] = "****"
-    st.dataframe(tabela_pokazowa, use_container_width=True)
+    st.markdown(
+        "### 📋 Lista pracowników (Edycja profilu i dodawanie podwyżek)"
+    )
+
+    df_pracownicy = wczytaj_pracownikow()
+
+    if "edytowany_pracownik" not in st.session_state:
+      st.session_state.edytowany_pracownik = None
+
+    if not df_pracownicy.empty:
+      for idx, row in df_pracownicy.iterrows():
+        p_imie = row["Pracownik"]
+        p_email = row.get("Email", "Brak")
+        p_rola = row.get("Rola", "Pracownik")
+        aktualna_s = pobierz_stawke_pracownika(p_imie, None)
+
+        col_info, col_edit, col_del = st.columns([3, 1, 1])
+
+        with col_info:
+          st.write(
+              f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Akt. stawka:"
+              f" `{aktualna_s} zł/h`"
+          )
+
+        with col_edit:
+          if st.button("✏️ Edytuj / Zmień stawkę", key=f"edit_p_{idx}"):
+            st.session_state.edytowany_pracownik = p_imie
+            st.rerun()
+
+        with col_del:
+          if st.button("🗑️ Usuń", key=f"del_p_{idx}"):
+            if p_imie == zalogowany_pracownik:
+              st.error("Nie możesz usunąć samego siebie!")
+            else:
+              df_pracownicy = df_pracownicy[
+                  df_pracownicy["Pracownik"] != p_imie
+              ]
+              zapisz_pracownikow(df_pracownicy)
+              st.success(f"Usunięto pracownika: {p_imie}")
+              st.rerun()
+
+      if st.session_state.edytowany_pracownik:
+        cel = st.session_state.edytowany_pracownik
+        dane_celu = df_pracownicy[df_pracownicy["Pracownik"] == cel]
+
+        if not dane_celu.empty:
+          akt_wiersz = dane_celu.iloc[0]
+          st.markdown("---")
+          st.markdown(f"### ✏️ Edycja profilu pracownika: **{cel}**")
+
+          with st.form(f"form_edycja_{cel}"):
+            nowe_imie_ed = st.text_input(
+                "Imię i nazwisko", value=akt_wiersz["Pracownik"]
+            )
+            nowy_email_ed = st.text_input(
+                "Adres e-mail", value=akt_wiersz.get("Email", "")
+            )
+            nowe_haslo_ed = st.text_input(
+                "Hasło", value=akt_wiersz.get("Haslo", ""), type="password"
+            )
+            idx_r = 0 if str(akt_wiersz["Rola"]) == "Pracownik" else 1
+            nowa_rola_ed = st.selectbox(
+                "Uprawnienia", ["Pracownik", "Admin"], index=idx_r
+            )
+
+            st.markdown("---")
+            st.markdown(
+                "💰 **Nowa stawka godzinowa (podwyżka / zmiana z datą)**"
+            )
+            ostatnia_s = pobierz_stawke_pracownika(cel, None)
+            nowa_stawka_ed = st.number_input(
+                "Stawka (zł/h)", min_value=0.0, value=ostatnia_s, step=5.0
+            )
+            data_od_nowej = st.date_input(
+                "Obowiązuje od daty", value=pd.Timestamp.today().date()
+            )
+
+            col_zapisz, col_anuluj = st.columns(2)
+            with col_zapisz:
+              btn_zapisz_zmiany = st.form_submit_button(
+                  "💾 Zapisz zmiany", use_container_width=True
+              )
+            with col_anuluj:
+              btn_anuluj = st.form_submit_button(
+                  "❌ Anuluj", use_container_width=True
+              )
+
+            if btn_zapisz_zmiany:
+              df_pracownicy.loc[
+                  df_pracownicy["Pracownik"] == cel, "Pracownik"
+              ] = nowe_imie_ed
+              df_pracownicy.loc[
+                  df_pracownicy["Pracownik"] == nowe_imie_ed, "Email"
+              ] = nowy_email_ed.strip().lower()
+              df_pracownicy.loc[
+                  df_pracownicy["Pracownik"] == nowe_imie_ed, "Haslo"
+              ] = nowe_haslo_ed
+              df_pracownicy.loc[
+                  df_pracownicy["Pracownik"] == nowe_imie_ed, "Rola"
+              ] = nowa_rola_ed
+              zapisz_pracownikow(df_pracownicy)
+
+              if nowa_stawka_ed != ostatnia_s:
+                dodaj_stawke_dla_pracownika(
+                    nowe_imie_ed, nowa_stawka_ed, data_od_nowej
+                )
+
+              st.session_state.edytowany_pracownik = None
+              st.success("Zaktualizowano pomyślnie!")
+              st.rerun()
+
+            if btn_anuluj:
+              st.session_state.edytowany_pracownik = None
+              st.rerun()
+    else:
+      st.info("Brak pracowników w systemie.")
 
   elif menu_admin == "🏗️ Zarządzanie Budowami":
     st.markdown("### Dodaj nową budowę / lokalizację")
@@ -255,7 +520,7 @@ if rola_uzytkownika == "Admin":
           st.error("❌ Taka budowa już istnieje na liście.")
 
     st.markdown("---")
-    st.markdown("### Aktualnie aktywne budowy (Zarządzaj / Usuń)")
+    st.markdown("### Aktualnie aktywne budowy (Usuń)")
     aktualne_b = wczytaj_budowy()
 
     if aktualne_b:
@@ -275,6 +540,9 @@ else:
   # --- PANEL DLA ZWYKŁEGO PRACOWNIKA ---
   st.subheader(f"Witaj, {zalogowany_pracownik}!")
 
+  stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
+  st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
+
   if not lista_budow:
     st.error(
         "❌ Brak dostępnych budów w systemie. Poproś administratora o dodanie"
@@ -287,7 +555,6 @@ else:
       data = st.date_input("Data")
       budowa = st.selectbox("Wybierz budowę", lista_budow)
 
-      # Czas dojazdu (od - do) umieszczony nad godzinami pracy
       st.markdown("🚗 **Czas dojazdu** (licznik naliczany jako 50% stawki)")
       col_d1, col_d2 = st.columns(2)
       with col_d1:
@@ -301,10 +568,6 @@ else:
         godzina_od = st.time_input("Godzina od")
       with col2:
         godzina_do = st.time_input("Godzina do")
-
-      stawka = st.number_input(
-          "Twoja stawka godzinowa (zł)", min_value=0.0, value=30.0, step=5.0
-      )
 
       submit = st.form_submit_button("Dodaj wpis")
 
@@ -321,7 +584,7 @@ else:
           )
         elif koniec_dt <= start_dt:
           st.error(
-              "Błąd: Godzina zakończenia pracy musi быть późniejsza niż"
+              "Błąd: Godzina zakończenia pracy musi być późniejsza niż"
               " rozpoczęcia!"
           )
         else:
@@ -335,7 +598,6 @@ else:
             ]
 
             for _, row in istniejace.iterrows():
-              # Sprawdzamy kolizję dla całego przedziału (od początku dojazdu do końca pracy)
               ist_dojazd_start = pd.to_datetime(
                   f"{row['Data']} {row['Dojazd Od']}"
               )
@@ -359,8 +621,12 @@ else:
             ).total_seconds() / 3600
             roznica_czasu = (koniec_dt - start_dt).total_seconds() / 3600
 
-            koszt_pracy = roznica_czasu * stawka
-            stawka_dojazdu = stawka / 2.0
+            aktualna_stawka = pobierz_stawke_pracownika(
+                zalogowany_pracownik, str(data)
+            )
+
+            koszt_pracy = roznica_czasu * aktualna_stawka
+            stawka_dojazdu = aktualna_stawka / 2.0
             koszt_dojazdu_zl = roznica_dojazdu * stawka_dojazdu
             razem = koszt_pracy + koszt_dojazdu_zl
 
@@ -373,7 +639,7 @@ else:
                 "Czas dojazdu (godz)": round(roznica_dojazdu, 2),
                 "Od": str(godzina_od),
                 "Do": str(godzina_do),
-                "Stawka (zł/h)": stawka,
+                "Stawka (zł/h)": aktualna_stawka,
                 "Godziny": round(roznica_czasu, 2),
                 "Koszt pracy (zł)": round(koszt_pracy, 2),
                 "Koszt dojazdu (zł)": round(koszt_dojazdu_zl, 2),
@@ -384,7 +650,10 @@ else:
                 [AktualneDane, pd.DataFrame([nowy_wpis])], ignore_index=True
             )
             zapisz_dane(AktualneDane)
-            st.success("✅ Zapisano pomyślnie!")
+            st.success(
+                f"✅ Zapisano pomyślnie! (Rozliczono wg stawki z dnia"
+                f" {data}: {aktualna_stawka} zł/h)"
+            )
 
   # --- WIDOK WŁASNYCH WPISÓW PRACOWNIKA ---
   st.markdown("---")
@@ -395,6 +664,12 @@ else:
     moje_dane = AktualneDane[AktualneDane["Pracownik"] == zalogowany_pracownik]
 
     if not moje_dane.empty:
+      mc1, mc2, mc3 = st.columns(3)
+      mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
+      mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
+      mc3.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
+      st.markdown("---")
+
       st.dataframe(moje_dane, use_container_width=True)
 
 
