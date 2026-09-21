@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import streamlit as st
+import openpyxl
 
 st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon="🏗️", layout="centered"
