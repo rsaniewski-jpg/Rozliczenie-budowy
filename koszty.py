@@ -965,7 +965,7 @@ else:
             # --- ZMODYFIKOWANE METRYKI PRACOWNIKA ---
             mc1, mc2 = st.columns(2)
             mc1.metric("Twój czas pracy", f"{moje_dane['Godziny'].sum():.2f} h")
-            mc2.metric("Twój czas dojazdu", f"{(moje_dane['Czas dojazdu (godz)'].sum() + moje_dane['Czas powrotu (godz)'].sum()):.2f} h")
+            mc2.metric("Twój czas w drodze", f"{(moje_dane['Czas dojazdu (godz)'].sum() + moje_dane['Czas powrotu (godz)'].sum()):.2f} h")
             
           #--  mc3, mc4 = st.columns(2) --
           #-- mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł") --
