@@ -40,7 +40,7 @@ st.markdown(
         display: none;
     }
     
-    /* Zmniejszenie przycisków będących samymi ikonami (tylko w sekcji pracowników) do minimalnego rozmiaru */
+    /* Zmniejszenie przycisków będących samymi ikonami do minimalnego rozmiaru */
     [data-testid="stHorizontalBlock"] div.stButton > button {
         padding: 0.2rem 0.4rem !important;
         min-height: unset !important;
@@ -651,7 +651,6 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    # Układ w jednej linii: dane pracownika oraz pomniejszone ikony edycji/usuwania
                     col_info, col_edit, col_del = st.columns([10, 1, 1])
 
                     with col_info:
@@ -777,14 +776,19 @@ if rola_uzytkownika == "Admin":
         if aktualne_b:
             for b in aktualne_b:
                 with st.container(border=True):
-                    st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
-                    col_edit, col_del = st.columns(2)
+                    # Układ w jednej linii: nazwa budowy oraz ikony edycji/usuwania
+                    col_info, col_edit, col_del = st.columns([10, 1, 1])
+
+                    with col_info:
+                        st.markdown(f"🏗️ **{b}**")
+
                     with col_edit:
-                        if st.button("✏️ Edytuj", key=f"edit_b_{b}", use_container_width=True):
+                        if st.button("✏️", key=f"edit_b_{b}", help="Edytuj budowę", use_container_width=True):
                             st.session_state.edytowana_budowa = b
                             st.rerun()
+
                     with col_del:
-                        if st.button("🗑️ Usuń", key=f"del_{b}", use_container_width=True):
+                        if st.button("🗑️", key=f"del_b_{b}", help="Usuń budowę", use_container_width=True):
                             usun_budowe(b)
                             st.success(f"Usunięto budowę: {b}")
                             st.rerun()
