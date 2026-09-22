@@ -3,20 +3,24 @@ from PIL import Image
 import pandas as pd
 import streamlit as st
 
-# Ścieżka do favicony (małe logo) oraz pełnego logo w folderze "loga"
+# Ścieżka do favicony oraz pełnego logo w folderze "loga"
 sciezka_favicony = os.path.join("loga", "logo.png")
 sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
 
 if os.path.exists(sciezka_favicony):
     ikonka = Image.open(sciezka_favicony)
 else:
-    ikonka = "🏗️"  # Awaryjna ikona tekstowa
+    ikonka = "🏗️"
 
+# --- DOMYŚLNIE ZWINIĘTE MENU NA START (KLUCZOWE DLA MOBILE) ---
 st.set_page_config(
-    page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
+    page_title="Rozliczanie Kosztów Budowy", 
+    page_icon=ikonka, 
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
-# --- WŁASNY STYL CSS Z POPRAWIONĄ OBSŁUGĄ MOBILNĄ MENU ---
+# --- WŁASNY STYL CSS Z POPRAWIONYM CHOWANIEM MENU ---
 st.markdown(
     """
     <style>
@@ -29,38 +33,26 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
-    /* Wyraźniejsze wyszarzenie tła kontenerów z budowami */
     [data-testid="stContainer"] {
         background-color: #e9ecef;
         border-radius: 8px;
         padding: 4px;
     }
-    /* Ukrycie napisu "Press enter to apply" pod polami */
     [data-testid="InputInstructions"] {
         display: none;
     }
-    /* Domyślna szerokość dla komputerów */
     .block-container {
         max-width: 920px !important;
         padding-top: 2rem;
         padding-bottom: 2rem;
     }
-    [data-testid="stSidebar"] {
-        min-width: 320px !important;
-        max-width: 320px !important;
-    }
 
-    /* --- RESPONSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (smartfony) --- */
+    /* --- RESPONSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
     @media (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
-        }
-        /* Pozwól Streamlit poprawnie zarządzać chowaniem i szerokością menu na mobile */
-        [data-testid="stSidebar"] {
-            width: 100% !important;
-            max-width: 100% !important;
         }
         h1 { font-size: 1.5rem !important; }
         h2 { font-size: 1.3rem !important; }
@@ -313,7 +305,7 @@ if "zalogowany" not in st.session_state:
 
 st.title("🏗️ System Rozliczania Czasu Pracy na Budowach")
 
-# --- WYŚWIETLANIE PEŁNEGO LOGO NA SAMEJ GÓRZE PANELU BOCZNEGO ---
+# --- WYŚWIETLANIE PEŁNEGO LOGO W PANELU BOCZNYM ---
 if os.path.exists(sciezka_pelne_logo):
     st.sidebar.image(sciezka_pelne_logo, use_container_width=True)
     st.sidebar.markdown("---")
@@ -343,7 +335,7 @@ if not st.session_state.zalogowany:
             st.sidebar.error("❌ Błędny e-mail lub hasło!")
 
     st.info(
-        "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i wciśnij **Enter** (lub kliknij 'Zaloguj się')."
+        "👈 Rozwiń menu boczne (ikona strzałki/menu w lewym górnym rogu), aby wpisać swój adres e-mail oraz hasło."
         "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
     )
     st.stop()
@@ -420,7 +412,6 @@ if rola_uzytkownika == "Admin":
     if menu_admin == "📊 Raport wszystkich wpisów":
         st.markdown("### Raport godzin i kosztów całej firmy")
 
-        # --- SEKCJA DOPISYWANIA GODZIN W GÓRNEJ CZĘŚCI RAPORTU ---
         with st.expander("➕ Dopisz godziny dla pracownika (kliknij, aby rozwinąć)"):
             df_pracownicy_adm = wczytaj_pracownikow()
             lista_pracownikow_nazwy = df_pracownicy_adm["Pracownik"].tolist()
@@ -482,7 +473,7 @@ if rola_uzytkownika == "Admin":
 
                             if konflikt:
                                 st.error(
-                                    f"❌ Błąd: Wybrane godziny (dojazd, praca lub powrót) kolidują z innym wpisem "
+                                    f"❌ Błąd: Wybrane godziny kolidują z innym wpisem "
                                     f"pracownika **{wybrany_pracownik_adm}** w tym dniu!"
                                 )
                             else:
@@ -521,8 +512,7 @@ if rola_uzytkownika == "Admin":
                                 AktualneDane = pd.concat([AktualneDane, pd.DataFrame([nowy_wpis_adm])], ignore_index=True)
                                 zapisz_dane(AktualneDane)
                                 st.success(
-                                    f"✅ Pomyślnie dopisano godziny dla pracownika: **{wybrany_pracownik_adm}** "
-                                    f"(Stawka z dnia {data_adm}: {stawka_wybranego} zł/h)"
+                                    f"✅ Pomyślnie dopisano godziny dla pracownika: **{wybrany_pracownik_adm}**"
                                 )
                                 st.rerun()
 
@@ -885,7 +875,7 @@ else:
 
                     if konflikt:
                         st.error(
-                            "❌ Błąd: Wybrane godziny (dojazd, praca lub powrót) kolidują z innym Twoim wpisem w tym dniu!"
+                            "❌ Błąd: Wybrane godziny kolidują z innym Twoim wpisem w tym dniu!"
                         )
                     else:
                         roznica_dojazdu = (
@@ -956,7 +946,6 @@ else:
 
             st.dataframe(moje_dane, use_container_width=True)
 
-
             def convert_df_to_excel(df):
                 from io import BytesIO
 
@@ -964,7 +953,6 @@ else:
                 with pd.ExcelWriter(output, engine="openpyxl") as writer:
                     df.to_excel(writer, index=False, sheet_name="Moje_Rozliczenie")
                 return output.getvalue()
-
 
             excel_data = convert_df_to_excel(moje_dane)
             st.download_button(
