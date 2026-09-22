@@ -3,7 +3,7 @@ from PIL import Image
 import pandas as pd
 import streamlit as st
 
-# Ścieżka do favicony (małe logo) oraz pełnego logo w folderze "loga"
+# Ścieżka do favicony oraz pełnego logo w folderze "loga"
 sciezka_favicony = os.path.join("loga", "logo.png")
 sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
 
@@ -16,11 +16,11 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- ELEGANCKI, BIZNESOWY STYL CSS (NAPRAWIONY) ---
+# --- BEZPIECZNY, ELEGANCKI STYL CSS (BEZ BLOKOWANIA PÓL) ---
 st.markdown(
     """
     <style>
-    /* Ogólne tło i czcionka */
+    /* Ogólne tło aplikacji */
     .stApp {
         background-color: #F8FAFC;
         color: #1E293B;
@@ -33,7 +33,7 @@ st.markdown(
         font-weight: 600;
     }
 
-    /* Eleganckie przyciski główne i domyślne */
+    /* Eleganckie przyciski */
     .stButton > button {
         background-color: #0284C7 !important;
         color: white !important;
@@ -51,14 +51,6 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Pola tekstowe i formularze w głównej części */
-    .stTextInput > div > div > input, .stSelectbox > div > div > div, .stDateInput > div > div > input, .stTimeInput > div > div > input {
-        border-radius: 8px !important;
-        border: 1px solid #CBD5E1 !important;
-        background-color: #FFFFFF !important;
-        color: #1E293B !important;
-    }
-
     /* Metryki (karty podsumowań) */
     [data-testid="stMetric"] {
         background-color: #FFFFFF;
@@ -73,7 +65,7 @@ st.markdown(
         font-weight: 700 !important;
     }
 
-    /* Panel boczny - poprawiony, aby pola były widoczne i czytelne */
+    /* Panel boczny */
     [data-testid="stSidebar"] {
         background-color: #0F172A;
         color: #F1F5F9;
@@ -81,14 +73,6 @@ st.markdown(
     
     [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown {
         color: #F1F5F9 !important;
-    }
-    
-    /* Poprawka pól tekstowych w panelu bocznym (żeby wpisany tekst był czarny na białym tle lub poprawnie widoczny) */
-    [data-testid="stSidebar"] input {
-        background-color: #FFFFFF !important;
-        color: #1E293B !important;
-        border: 1px solid #334155 !important;
-        border-radius: 8px !important;
     }
     </style>
 """,
