@@ -362,7 +362,7 @@ if not st.session_state.zalogowany:
 
     st.info(
         "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i wciśnij **Enter** (lub kliknij 'Zaloguj się')."
-        "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
+        #-- "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*" --
     )
     st.stop()
 
