@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS (ZACHOWUJĄCY ORYGINALNE TŁO I POPRAWNE CHOWANIE MENU) ---
+# --- WŁASNY STYL CSS Z OPTYMALIZACJĄ MOBILNĄ ---
 st.markdown(
     """
     <style>
@@ -29,23 +29,37 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
+    /* Wyraźniejsze wyszarzenie tła kontenerów z budowami */
+    [data-testid="stContainer"] {
+        background-color: #e9ecef;
+        border-radius: 8px;
+        padding: 4px;
+    }
     /* Ukrycie napisu "Press enter to apply" pod polami */
     [data-testid="InputInstructions"] {
         display: none;
     }
-    /* Domyślna szerokość główna dla komputerów */
+    /* Domyślna szerokość dla komputerów */
     .block-container {
         max-width: 920px !important;
         padding-top: 2rem;
         padding-bottom: 2rem;
     }
+    [data-testid="stSidebar"] {
+        min-width: 320px !important;
+        max-width: 320px !important;
+    }
 
-    /* --- RESPSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
+    /* --- RESPSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (smartfony) --- */
     @media (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
+        }
+        [data-testid="stSidebar"] {
+            min-width: 100% !important;
+            max-width: 100% !important;
         }
         h1 { font-size: 1.5rem !important; }
         h2 { font-size: 1.3rem !important; }
@@ -329,7 +343,7 @@ if not st.session_state.zalogowany:
 
     st.info(
         "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i wciśnij **Enter** (lub kliknij 'Zaloguj się')."
-        #-- "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*" --
+        "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
     )
     st.stop()
 
@@ -515,6 +529,7 @@ if rola_uzytkownika == "Admin":
 
         dane_systemowe = wczytaj_dane()
         if not dane_systemowe.empty:
+            # --- ZMODYFIKOWANY UKŁAD METRYK POD URZĄDZENIA MOBILNE (2 RZĘDY) ---
             mc_a1, mc_a2, mc_a3 = st.columns(3)
             mc_a1.metric("Łączne godziny", f"{dane_systemowe['Godziny'].sum():.2f} h")
             mc_a2.metric("Koszt pracy", f"{dane_systemowe['Koszt pracy (zł)'].sum():.2f} zł")
@@ -809,7 +824,7 @@ else:
     st.subheader(f"Witaj, {zalogowany_pracownik}!")
 
     stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
- #--   st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**") --
+    st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
 
     if not lista_budow:
         st.error(
@@ -929,18 +944,20 @@ else:
         moje_dane = AktualneDane[AktualneDane["Pracownik"] == zalogowany_pracownik]
 
         if not moje_dane.empty:
-            # --- ZMODYFIKOWANE METRYKI PRACOWNIKA ---
+            # --- ZMODYFIKOWANY UKŁAD METRYK DLA PRACOWNIKA (2 RZĘDY) ---
             mc1, mc2 = st.columns(2)
-            mc1.metric("Twój czas pracy", f"{moje_dane['Godziny'].sum():.2f} h")
-            mc2.metric("Twój czas w drodze", f"{(moje_dane['Czas dojazdu (godz)'].sum() + moje_dane['Czas powrotu (godz)'].sum()):.2f} h")
+            mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
+            mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
             
-          #--  mc3, mc4 = st.columns(2) --
-          #-- mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł") --
-          #--  mc4.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł") --
+            mc3, mc4 = st.columns(2)
+            mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł")
+            mc4.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
             
             st.markdown("---")
 
-            st.dataframe(moje_dane, use_container_width=True)
+            # Wyświetlenie tabeli na ekranie bez kolumny "Pracownik"
+            moje_dane_ekran = moje_dane.drop(columns=["Pracownik"]) if "Pracownik" in moje_dane.columns else moje_dane
+            st.dataframe(moje_dane_ekran, use_container_width=True)
 
 
             def convert_df_to_excel(df):
@@ -952,6 +969,7 @@ else:
                 return output.getvalue()
 
 
+            # Do pliku Excel przekazujemy pełne dane (z imieniem i nazwiskiem)
             excel_data = convert_df_to_excel(moje_dane)
             st.download_button(
                 label="📥 Pobierz moje rozliczenie do Excela (.xlsx)",
