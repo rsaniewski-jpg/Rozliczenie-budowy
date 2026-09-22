@@ -3,76 +3,31 @@ from PIL import Image
 import pandas as pd
 import streamlit as st
 
-# Ścieżka do favicony oraz pełnego logo w folderze "loga"
+# Ścieżka do favicony (małe logo) oraz pełnego logo w folderze "loga"
 sciezka_favicony = os.path.join("loga", "logo.png")
 sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
 
 if os.path.exists(sciezka_favicony):
     ikonka = Image.open(sciezka_favicony)
 else:
-    ikonka = "🏗️"
+    ikonka = "🏗️"  # Awaryjna ikona tekstowa
 
 st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- BEZPIECZNY, ELEGANCKI STYL CSS (BEZ BLOKOWANIA PÓL) ---
+# --- WŁASNY STYL CSS ---
 st.markdown(
     """
     <style>
-    /* Ogólne tło aplikacji */
-    .stApp {
-        background-color: #F8FAFC;
-        color: #1E293B;
-    }
-    
-    /* Nagłówki */
-    h1, h2, h3 {
-        color: #0F172A;
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-    }
-
-    /* Eleganckie przyciski */
-    .stButton > button {
-        background-color: #0284C7 !important;
+    div.stButton > button[kind="primary"] {
+        background-color: #0066cc !important;
         color: white !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 0.5rem 1rem !important;
-        font-weight: 500 !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        transition: all 0.2s ease-in-out;
+        border-color: #0052a3 !important;
     }
-    
-    .stButton > button:hover {
-        background-color: #0369A1 !important;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        transform: translateY(-1px);
-    }
-
-    /* Metryki (karty podsumowań) */
-    [data-testid="stMetric"] {
-        background-color: #FFFFFF;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        border: 1px solid #E2E8F0;
-    }
-
-    [data-testid="stMetricValue"] {
-        color: #0284C7 !important;
-        font-weight: 700 !important;
-    }
-
-    /* Panel boczny */
-    [data-testid="stSidebar"] {
-        background-color: #0F172A;
-        color: #F1F5F9;
-    }
-    
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown {
-        color: #F1F5F9 !important;
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #0052a3 !important;
+        color: white !important;
     }
     </style>
 """,
@@ -358,6 +313,7 @@ if rola_uzytkownika == "Admin":
     if menu_admin == "📊 Raport wszystkich wpisów":
         st.markdown("### Raport godzin i kosztów całej firmy")
 
+        # --- SEKCJA DOPISYWANIA GODZIN W GÓRNEJ CZĘŚCI RAPORTU ---
         with st.expander("➕ Dopisz godziny dla pracownika (kliknij, aby rozwinąć)"):
             df_pracownicy_adm = wczytaj_pracownikow()
             lista_pracownikow_nazwy = df_pracownicy_adm["Pracownik"].tolist()
@@ -399,6 +355,7 @@ if rola_uzytkownika == "Admin":
                         elif koniec_dt <= start_dt:
                             st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
                         else:
+                            # --- SPRAWDZENIE KONFLIKTU GODZIN DLA ADMINA ---
                             konflikt = False
                             AktualneDane = wczytaj_dane()
 
@@ -562,7 +519,9 @@ if rola_uzytkownika == "Admin":
                     st.rerun()
 
         st.markdown("---")
-        st.markdown("### 📋 Lista pracowników (Edycja profilu i dodawanie podwyżek)")
+        st.markdown(
+            "### 📋 Lista pracowników (Edycja profilu i dodawanie podwyżek)"
+        )
 
         df_pracownicy = wczytaj_pracownikow()
 
@@ -626,7 +585,9 @@ if rola_uzytkownika == "Admin":
                         )
 
                         st.markdown("---")
-                        st.markdown("💰 **Nowa stawka godzinowa (podwyżka / zmiana z datą)**")
+                        st.markdown(
+                            "💰 **Nowa stawka godzinowa (podwyżka / zmiana z datą)**"
+                        )
                         ostatnia_s = pobierz_stawke_pracownika(cel, None)
                         nowa_stawka_ed = st.number_input(
                             "Stawka (zł/h)", min_value=0.0, value=ostatnia_s, step=5.0
