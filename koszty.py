@@ -959,8 +959,17 @@ else:
             
             st.markdown("---")
 
-            # Wyświetlenie tabeli na ekranie bez kolumny "Pracownik"
-            moje_dane_ekran = moje_dane.drop(columns=["Pracownik"]) if "Pracownik" in moje_dane.columns else moje_dane
+            # Wyświetlenie tabeli na ekranie z możliwością łatwego włączania/wyłączania kolumn
+            kolumny_do_ukrycia = [
+                "Pracownik", 
+                "Stawka (zł/h)", 
+                "Koszt pracy (zł)", 
+                "Koszt dojazdu (zł)", 
+                "Koszt powrotu (zł)", 
+                "Razem (zł)"
+            ]
+            
+            moje_dane_ekran = moje_dane.drop(columns=[col for col in kolumny_do_ukrycia if col in moje_dane.columns])
             st.dataframe(moje_dane_ekran, use_container_width=True)
 
 
@@ -973,7 +982,7 @@ else:
                 return output.getvalue()
 
 
-            # Do pliku Excel przekazujemy pełne dane (z imieniem i nazwiskiem)
+            # Do pliku Excel przekazujemy pełne dane (z imieniem i nazwiskiem oraz stawkami/kosztami)
             excel_data = convert_df_to_excel(moje_dane)
             st.download_button(
                 label="📥 Pobierz moje rozliczenie do Excela (.xlsx)",
