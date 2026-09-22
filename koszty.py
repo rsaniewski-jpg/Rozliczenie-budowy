@@ -632,16 +632,16 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    st.write(f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
-                    col_edit, col_del = st.columns(2)
-
+                    # Zmniejszone przyciski akcji (zmieniono szerokość kolumn dla przycisków na węższe)
+                    col_info, col_edit, col_del = st.columns([6, 1.2, 1.2])
+                    with col_info:
+                        st.write(f"👤 **{p_imie}** (`{p_email}`) \n Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
                     with col_edit:
-                        if st.button("✏️ Edytuj", key=f"edit_p_{idx}", use_container_width=True):
+                        if st.button("✏️", key=f"edit_p_{idx}", help="Edytuj"):
                             st.session_state.edytowany_pracownik = p_imie
                             st.rerun()
-
                     with col_del:
-                        if st.button("🗑️ Usuń", key=f"del_p_{idx}", use_container_width=True):
+                        if st.button("🗑️", key=f"del_p_{idx}", help="Usuń"):
                             if p_imie == zalogowany_pracownik:
                                 st.error("Nie możesz usunąć samego siebie!")
                             else:
@@ -755,14 +755,16 @@ if rola_uzytkownika == "Admin":
         if aktualne_b:
             for b in aktualne_b:
                 with st.container(border=True):
-                    st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
-                    col_edit, col_del = st.columns(2)
-                    with col_edit:
-                        if st.button("✏️ Edytuj", key=f"edit_b_{b}", use_container_width=True):
+                    # Zmniejszone przyciski akcji dla budów
+                    col_info_b, col_edit_b, col_del_b = st.columns([6, 1.2, 1.2])
+                    with col_info_b:
+                        st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
+                    with col_edit_b:
+                        if st.button("✏️", key=f"edit_b_{b}", help="Edytuj"):
                             st.session_state.edytowana_budowa = b
                             st.rerun()
-                    with col_del:
-                        if st.button("🗑️ Usuń", key=f"del_{b}", use_container_width=True):
+                    with col_del_b:
+                        if st.button("🗑️", key=f"del_{b}", help="Usuń"):
                             usun_budowe(b)
                             st.success(f"Usunięto budowę: {b}")
                             st.rerun()
