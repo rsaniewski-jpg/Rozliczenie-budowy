@@ -47,11 +47,12 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* Zmniejszone przyciski (bardziej zgrabne i kompaktowe) */
-    div.row-widget.stButton > button {
+    /* Mocno zmniejszone przyciski (bardzo zgrabne i kompaktowe) */
+    div.row-widget.stButton > button, div.stButton > button {
         width: 100% !important;
-        padding: 0.2rem 0.4rem !important;
-        font-size: 0.85rem !important;
+        padding: 0.1rem 0.3rem !important;
+        font-size: 0.75rem !important;
+        min-height: unset !important;
     }
 
     /* --- RESPONSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
