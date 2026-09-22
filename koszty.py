@@ -220,6 +220,47 @@ def zapisz_dane(df):
     df.to_csv(PLIK_BAZY, index=False)
 
 
+# --- RYGORYSTYCZNA FUNKCJA SPRAWDZAJĄCA KONFLIKTY CZASOWE ---
+def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_od_dt, p_do_dt):
+    """
+    Sprawdza, czy nowy wpis (dojazd lub praca) nakłada się na jakikolwiek 
+    istniejący wpis tego samego pracownika w danym dniu.
+    """
+    if df_dane.empty:
+        return False
+
+    istniejace = df_dane[
+        (df_dane["Pracownik"] == pracownik) & (df_dane["Data"] == data_str)
+    ]
+
+    if istniejace.empty:
+        return False
+
+    def przedzialy_sie_nakladaja(s1, e1, s2, e2):
+        return max(s1, s2) < min(e1, e2)
+
+    for _, row in istniejace.iterrows():
+        i_d_od = pd.to_datetime(f"{data_str} {row['Dojazd Od']}")
+        i_d_do = pd.to_datetime(f"{data_str} {row['Dojazd Do']}")
+        i_p_od = pd.to_datetime(f"{data_str} {row['Od']}")
+        i_p_do = pd.to_datetime(f"{data_str} {row['Do']}")
+
+        # 1. Nowy dojazd vs Istniejący dojazd
+        if przedzialy_sie_nakladaja(d_od_dt, d_do_dt, i_d_od, i_d_do):
+            return True
+        # 2. Nowy dojazd vs Istniejąca praca
+        if przedzialy_sie_nakladaja(d_od_dt, d_do_dt, i_p_od, i_p_do):
+            return True
+        # 3. Nowa praca vs Istniejący dojazd
+        if przedzialy_sie_nakladaja(p_od_dt, p_do_dt, i_d_od, i_d_do):
+            return True
+        # 4. Nowa praca vs Istniejąca praca
+        if przedzialy_sie_nakladaja(p_od_dt, p_do_dt, i_p_od, i_p_do):
+            return True
+
+    return False
+
+
 # --- STAN SESJI ---
 if "zalogowany" not in st.session_state:
     st.session_state.zalogowany = False
@@ -259,7 +300,7 @@ if not st.session_state.zalogowany:
 
     st.info(
         "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i wciśnij **Enter** (lub kliknij 'Zaloguj się')."
-        
+        "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
     )
     st.stop()
 
@@ -377,32 +418,16 @@ if rola_uzytkownika == "Admin":
                         elif koniec_dt <= start_dt:
                             st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
                         else:
-                            # --- SPRAWDZENIE KONFLIKTU GODZIN DLA ADMINA ---
-                            konflikt = False
                             AktualneDane = wczytaj_dane()
-
-                            if not AktualneDane.empty:
-                                istniejace = AktualneDane[
-                                    (AktualneDane["Pracownik"] == wybrany_pracownik_adm)
-                                    & (AktualneDane["Data"] == str(data_adm))
-                                ]
-
-                                for _, row in istniejace.iterrows():
-                                    ist_dojazd_start = pd.to_datetime(
-                                        f"{row['Data']} {row['Dojazd Od']}"
-                                    )
-                                    ist_praca_koniec = pd.to_datetime(f"{row['Data']} {row['Do']}")
-
-                                    if max(dojazd_start_dt, ist_dojazd_start) < min(
-                                        koniec_dt, ist_praca_koniec
-                                    ):
-                                        konflikt = True
-                                        break
+                            konflikt = sprawdz_konflikt_czasowy(
+                                AktualneDane, wybrany_pracownik_adm, str(data_adm), 
+                                dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt
+                            )
 
                             if konflikt:
                                 st.error(
-                                    f"❌ Błąd: Te godziny (dojazd lub praca) pokrywają się z innym wpisem "
-                                    f"pracownika **{wybrany_pracownik_adm}** w tym dniu!"
+                                    f"❌ Błąd: Wybrane godziny (dojazd lub praca) kolidują z innym wpisem "
+                                    f"pracownika **{wybrany_pracownik_adm}** w tym dniu! Pracownik nie może być w dwóch miejscach naraz ani nakładać na siebie dojazdów/pracy."
                                 )
                             else:
                                 roznica_dojazdu = (dojazd_koniec_dt - dojazd_start_dt).total_seconds() / 3600
@@ -796,32 +821,16 @@ else:
                         " rozpoczęcia!"
                     )
                 else:
-                    konflikt = False
                     AktualneDane = wczytaj_dane()
-
-                    if not AktualneDane.empty:
-                        istniejace = AktualneDane[
-                            (AktualneDane["Pracownik"] == zalogowany_pracownik)
-                            & (AktualneDane["Data"] == str(data))
-                        ]
-
-                        for _, row in istniejace.iterrows():
-                            ist_dojazd_start = pd.to_datetime(
-                                f"{row['Data']} {row['Dojazd Od']}"
-                            )
-                            ist_praca_koniec = pd.to_datetime(f"{row['Data']} {row['Do']}")
-
-                            if max(dojazd_start_dt, ist_dojazd_start) < min(
-                                koniec_dt, ist_praca_koniec
-                            ):
-                                konflikt = True
-                                break
+                    konflikt = sprawdz_konflikt_czasowy(
+                        AktualneDane, zalogowany_pracownik, str(data),
+                        dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt
+                    )
 
                     if konflikt:
                         st.error(
-                            "❌ Błąd: Te godziny (dojazd lub praca) pokrywają się z innym"
-                            " Twoim wpisem w tym dniu! Nie możesz być w dwóch miejscach"
-                            " naraz."
+                            "❌ Błąd: Wybrane godziny (dojazd lub praca) kolidują z innym Twoim wpisem w tym dniu! "
+                            "Nie możesz być na innej budowie, najeżdżać na czas dojazdu ani być w dwóch miejscach naraz."
                         )
                     else:
                         roznica_dojazdu = (
