@@ -27,21 +27,10 @@ st.markdown(
             margin-bottom: 1.5rem;
         }
         
-        div.stButton > button[kind="primary"] {
-            background-color: #1a1a1a !important;
-            color: #ffffff !important;
-            border: 1px solid #333333 !important;
+        /* Elegancki styl przycisków głównych (głęboki antracyt / czerń) */
+        div.stButton > button[kind="primary"], div.stButton > button[data-baseweb="button"] {
             border-radius: 4px;
             font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        div.stButton > button[kind="primary"]:hover {
-            background-color: #333333 !important;
-            border-color: #000000 !important;
-        }
-
-        .stTextInput > div > div > input, .stSelectbox > div > div > div {
-            border-radius: 4px !important;
         }
     </style>
 """,
@@ -63,7 +52,6 @@ def wczytaj_dane(plik, domyslne_kolumny):
   if os.path.exists(plik):
     try:
       df = pd.read_csv(plik)
-      # Sprawdzenie czy wymagane kolumny istnieją, jeśli nie - zwracamy puste z poprawnymi kolumnami
       if not all(col in df.columns for col in domyslne_kolumny):
         return pd.DataFrame(columns=domyslne_kolumny)
       return df
@@ -113,14 +101,14 @@ if wybrana_rola == "Administrator":
 
   with tab2:
     st.write("Moduł generowania raportów i eksportu danych.")
-    if st.button("Generuj raport Excel", kind="primary"):
+    # Poprawiono parametr z kind na type
+    if st.button("Generuj raport Excel", type="primary"):
       st.success("Raport został przygotowany pomyślnie.")
 
 else:
   st.markdown("#### Panel Rejestracji Czasu i Kosztów")
   st.write("Wprowadź bieżące dane operacyjne dla wybranej budowy.")
 
-  # Bezpieczny wybór budowy (jeśli tabela jest pusta, pozwala wpisać tekst)
   if not df_budowy.empty and "Nazwa_Budowy" in df_budowy.columns:
     wybrana_budowa = st.selectbox(
         "Wybierz budowę:", df_budowy["Nazwa_Budowy"].tolist()
@@ -130,5 +118,6 @@ else:
         "Nazwa budowy (baza budów jest pusta lub brak kolumny):"
     )
 
-  if st.button("Zapisz wpis", kind="primary"):
+  # Poprawiono parametr z kind na type
+  if st.button("Zapisz wpis", type="primary"):
     st.success(f"Zapisano dane dla budowy: {wybrana_budowa}")
