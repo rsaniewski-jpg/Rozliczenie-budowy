@@ -4,7 +4,6 @@ import pandas as pd
 import streamlit as st
 
 # --- KONFIGURACJA STRONY I ELEGANCKI WYGLĄD ---
-# Bezpieczne ładowanie stonowanej ikony (zabezpieczenie przed brakiem pliku)
 sciezka_favicony = os.path.join("loga", "logo.png")
 if os.path.exists(sciezka_favicony):
   ikonka = Image.open(sciezka_favicony)
@@ -19,7 +18,6 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        /* Wyśrodkowanie głównego tytułu i zabezpieczenie przed zawijaniem */
         .centered-title {
             text-align: center;
             white-space: nowrap;
@@ -29,7 +27,6 @@ st.markdown(
             margin-bottom: 1.5rem;
         }
         
-        /* Elegancki styl przycisków głównych (głęboki antracyt / czerń) */
         div.stButton > button[kind="primary"] {
             background-color: #1a1a1a !important;
             color: #ffffff !important;
@@ -43,7 +40,6 @@ st.markdown(
             border-color: #000000 !important;
         }
 
-        /* Subtelniejsze obramowania kontenerów i pól */
         .stTextInput > div > div > input, .stSelectbox > div > div > div {
             border-radius: 4px !important;
         }
@@ -81,10 +77,10 @@ df_pracownicy = wczytaj_dane(
 
 # --- PANEL BOCZNY (SIDEBAR) ---
 with st.sidebar:
-  # Opcjonalne logo w panelu, jeśli istnieje
   sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
   if os.path.exists(sciezka_pelne_logo):
-    st.image(sciezka_pelne_logo, use_column_width=True)
+    # Bezpieczne wyświetlanie grafiki dla nowszych wersji Streamlit
+    st.image(sciezka_pelne_logo, use_container_width=True)
 
   st.markdown("### Panel Użytkownika")
   wybrana_rola = st.selectbox(
@@ -106,7 +102,6 @@ if wybrana_rola == "Administrator":
       " oraz eksportu do programu Excel."
   )
 
-  # Przykład sekcji administratora
   tab1, tab2 = st.tabs(["Zarządzanie Budowami", "Raporty Finansowe"])
 
   with tab1:
@@ -122,7 +117,6 @@ else:
   st.markdown("#### Panel Rejestracji Czasu i Kosztów")
   st.write("Wprowadź bieżące dane operacyjne dla wybranej budowy.")
 
-  # Formularz dla standardowego użytkownika
   if not df_budowy.empty:
     wybrana_budowa = st.selectbox(
         "Wybierz budowę:", df_budowy["Nazwa_Budowy"].tolist()
