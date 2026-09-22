@@ -809,8 +809,8 @@ else:
     # --- PANEL DLA ZWYKŁEGO PRACOWNIKA ---
     st.subheader(f"Witaj, {zalogowany_pracownik}!")
 
-    stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
-    st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
+   # stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
+   # st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
 
     if not lista_budow:
         st.error(
