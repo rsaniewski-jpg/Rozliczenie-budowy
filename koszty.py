@@ -8,7 +8,7 @@ sciezka_favicony = os.path.join("loga", "logo.png")
 if os.path.exists(sciezka_favicony):
   ikonka = Image.open(sciezka_favicony)
 else:
-  ikonka = "📐"  # Elegancki, profesjonalny symbol techniczny
+  ikonka = "📐"
 
 st.set_page_config(
     page_title="Rozliczenie Kosztów Budowy", page_icon=ikonka, layout="centered"
@@ -62,7 +62,11 @@ PLIK_PRACOWNIKOW = "baza_pracownikow.csv"
 def wczytaj_dane(plik, domyslne_kolumny):
   if os.path.exists(plik):
     try:
-      return pd.read_csv(plik)
+      df = pd.read_csv(plik)
+      # Sprawdzenie czy wymagane kolumny istnieją, jeśli nie - zwracamy puste z poprawnymi kolumnami
+      if not all(col in df.columns for col in domyslne_kolumny):
+        return pd.DataFrame(columns=domyslne_kolumny)
+      return df
     except Exception:
       return pd.DataFrame(columns=domyslne_kolumny)
   return pd.DataFrame(columns=domyslne_kolumny)
@@ -79,7 +83,6 @@ df_pracownicy = wczytaj_dane(
 with st.sidebar:
   sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
   if os.path.exists(sciezka_pelne_logo):
-    # Bezpieczne wyświetlanie grafiki dla nowszych wersji Streamlit
     st.image(sciezka_pelne_logo, use_container_width=True)
 
   st.markdown("### Panel Użytkownika")
@@ -117,12 +120,15 @@ else:
   st.markdown("#### Panel Rejestracji Czasu i Kosztów")
   st.write("Wprowadź bieżące dane operacyjne dla wybranej budowy.")
 
-  if not df_budowy.empty:
+  # Bezpieczny wybór budowy (jeśli tabela jest pusta, pozwala wpisać tekst)
+  if not df_budowy.empty and "Nazwa_Budowy" in df_budowy.columns:
     wybrana_budowa = st.selectbox(
         "Wybierz budowę:", df_budowy["Nazwa_Budowy"].tolist()
     )
   else:
-    wybrana_budowa = st.text_input("Nazwa budowy:")
+    wybrana_budowa = st.text_input(
+        "Nazwa budowy (baza budów jest pusta lub brak kolumny):"
+    )
 
   if st.button("Zapisz wpis", kind="primary"):
     st.success(f"Zapisano dane dla budowy: {wybrana_budowa}")
