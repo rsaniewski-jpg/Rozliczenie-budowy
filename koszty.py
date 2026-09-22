@@ -16,10 +16,21 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS (PRZYWRÓCONE TŁO KONTENERÓW + POPRAWNE MENU) ---
+# --- WŁASNY STYL CSS (WYMUSZENIE JASNEGO MOTYWU I ORYGINALNYCH KOLORÓW) ---
 st.markdown(
     """
     <style>
+    /* Wymuszenie jasnego motywu, aby telefon nie włączał automatycznie ciemnego trybu */
+    :root {
+        color-scheme: light;
+    }
+    
+    /* Główne tło aplikacji jako jasne */
+    .stApp {
+        background-color: #FFFFFF !important;
+        color: #31333F !important;
+    }
+
     div.stButton > button[kind="primary"] {
         background-color: #0066cc !important;
         color: white !important;
@@ -29,16 +40,19 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
-    /* Przywrócone wyraźniejsze, jasne tło kontenerów z budowami/pracownikami */
+    
+    /* Oryginalne, jasne tło kontenerów */
     [data-testid="stContainer"] {
-        background-color: #e9ecef;
+        background-color: #e9ecef !important;
         border-radius: 8px;
         padding: 6px;
     }
+    
     /* Ukrycie napisu "Press enter to apply" pod polami */
     [data-testid="InputInstructions"] {
         display: none;
     }
+    
     /* Domyślna szerokość główna dla komputerów */
     .block-container {
         max-width: 920px !important;
