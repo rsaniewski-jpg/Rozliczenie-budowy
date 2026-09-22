@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS ---
+# --- WŁASNY STYL CSS Z OPTYMALIZACJĄ MOBILNĄ ---
 st.markdown(
     """
     <style>
@@ -39,14 +39,31 @@ st.markdown(
     [data-testid="InputInstructions"] {
         display: none;
     }
-    /* Zwiększenie szerokości głównego kontenera, aby długi tytuł mieścił się w jednej linii */
+    /* Domyślna szerokość dla komputerów */
     .block-container {
         max-width: 920px !important;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
     }
-    /* Zablokowanie / ustalenie stałej szerokości lewego paska bocznego */
     [data-testid="stSidebar"] {
         min-width: 320px !important;
         max-width: 320px !important;
+    }
+
+    /* --- RESPSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (smartfony) --- */
+    @media (max-width: 768px) {
+        .block-container {
+            max-width: 100% !important;
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+        }
+        [data-testid="stSidebar"] {
+            min-width: 100% !important;
+            max-width: 100% !important;
+        }
+        h1 { font-size: 1.5rem !important; }
+        h2 { font-size: 1.3rem !important; }
+        h3 { font-size: 1.1rem !important; }
     }
     </style>
 """,
@@ -195,7 +212,17 @@ def usun_budowe(nazwa_do_usuniecia):
 
 def wczytaj_dane():
     if os.path.exists(PLIK_BAZY):
-        return pd.read_csv(PLIK_BAZY)
+        df = pd.read_csv(PLIK_BAZY)
+        kolumny_powrotu = {
+            "Powrót Od": "00:00",
+            "Powrót Do": "00:00",
+            "Czas powrotu (godz)": 0.0,
+            "Koszt powrotu (zł)": 0.0
+        }
+        for kol, domyslna_wartosc in kolumny_powrotu.items():
+            if kol not in df.columns:
+                df[kol] = domyslna_wartosc
+        return df
     else:
         return pd.DataFrame(
             columns=[
@@ -211,6 +238,10 @@ def wczytaj_dane():
                 "Godziny",
                 "Koszt pracy (zł)",
                 "Koszt dojazdu (zł)",
+                "Powrót Od",
+                "Powrót Do",
+                "Czas powrotu (godz)",
+                "Koszt powrotu (zł)",
                 "Razem (zł)",
             ]
         )
@@ -220,12 +251,8 @@ def zapisz_dane(df):
     df.to_csv(PLIK_BAZY, index=False)
 
 
-# --- RYGORYSTYCZNA FUNKCJA SPRAWDZAJĄCA KONFLIKTY CZASOWE ---
-def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_od_dt, p_do_dt):
-    """
-    Sprawdza, czy nowy wpis (dojazd lub praca) nakłada się na jakikolwiek 
-    istniejący wpis tego samego pracownika w danym dniu.
-    """
+# --- FUNKCJA SPRAWDZAJĄCA KONFLIKTY CZASOWE ---
+def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_od_dt, p_do_dt, pow_od_dt, pow_do_dt):
     if df_dane.empty:
         return False
 
@@ -237,6 +264,8 @@ def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_o
         return False
 
     def przedzialy_sie_nakladaja(s1, e1, s2, e2):
+        if s1 == e1 or s2 == e2:
+            return False
         return max(s1, s2) < min(e1, e2)
 
     for _, row in istniejace.iterrows():
@@ -244,19 +273,33 @@ def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_o
         i_d_do = pd.to_datetime(f"{data_str} {row['Dojazd Do']}")
         i_p_od = pd.to_datetime(f"{data_str} {row['Od']}")
         i_p_do = pd.to_datetime(f"{data_str} {row['Do']}")
+        
+        pow_od_val = row.get("Powrót Od", "00:00")
+        pow_do_val = row.get("Powrót Do", "00:00")
+        if pd.isna(pow_od_val) or pow_od_val == "":
+            pow_od_val = "00:00"
+        if pd.isna(pow_do_val) or pow_do_val == "":
+            pow_do_val = "00:00"
 
-        # 1. Nowy dojazd vs Istniejący dojazd
-        if przedzialy_sie_nakladaja(d_od_dt, d_do_dt, i_d_od, i_d_do):
-            return True
-        # 2. Nowy dojazd vs Istniejąca praca
-        if przedzialy_sie_nakladaja(d_od_dt, d_do_dt, i_p_od, i_p_do):
-            return True
-        # 3. Nowa praca vs Istniejący dojazd
-        if przedzialy_sie_nakladaja(p_od_dt, p_do_dt, i_d_od, i_d_do):
-            return True
-        # 4. Nowa praca vs Istniejąca praca
-        if przedzialy_sie_nakladaja(p_od_dt, p_do_dt, i_p_od, i_p_do):
-            return True
+        i_pow_od = pd.to_datetime(f"{data_str} {pow_od_val}")
+        i_pow_do = pd.to_datetime(f"{data_str} {pow_do_val}")
+
+        istniejace_okresy = [
+            (i_d_od, i_d_do),
+            (i_p_od, i_p_do),
+            (i_pow_od, i_pow_do)
+        ]
+
+        nowe_okresy = [
+            (d_od_dt, d_do_dt),
+            (p_od_dt, p_do_dt),
+            (pow_od_dt, pow_do_dt)
+        ]
+
+        for n_s, n_e in nowe_okresy:
+            for i_s, i_e in istniejace_okresy:
+                if przedzialy_sie_nakladaja(n_s, n_e, i_s, i_e):
+                    return True
 
     return False
 
@@ -332,7 +375,7 @@ if rola_uzytkownika == "Admin":
 
     with col_btn1:
         if st.button(
-            "📊 Raport wpisów i dopisywanie",
+            "📊 Raport wpisów",
             use_container_width=True,
             type=(
                 "primary"
@@ -405,6 +448,13 @@ if rola_uzytkownika == "Admin":
                     with col_pa2:
                         godzina_do_adm = st.time_input("Godzina do", value=pd.to_datetime("16:00").time())
 
+                    st.markdown("🏠 **Czas powrotu** (50% stawki)")
+                    col_powa1, col_powa2 = st.columns(2)
+                    with col_powa1:
+                        powrot_od_adm = st.time_input("Powrót od", value=pd.to_datetime("16:00").time())
+                    with col_powa2:
+                        powrot_do_adm = st.time_input("Powrót do", value=pd.to_datetime("17:00").time())
+
                     submit_adm_wpis = st.form_submit_button("💾 Dodaj ten wpis dla pracownika")
 
                     if submit_adm_wpis:
@@ -412,33 +462,40 @@ if rola_uzytkownika == "Admin":
                         dojazd_koniec_dt = pd.to_datetime(f"{data_adm} {dojazd_do_adm}")
                         start_dt = pd.to_datetime(f"{data_adm} {godzina_od_adm}")
                         koniec_dt = pd.to_datetime(f"{data_adm} {godzina_do_adm}")
+                        powrot_start_dt = pd.to_datetime(f"{data_adm} {powrot_od_adm}")
+                        powrot_koniec_dt = pd.to_datetime(f"{data_adm} {powrot_do_adm}")
 
                         if dojazd_koniec_dt < dojazd_start_dt:
                             st.error("Błąd: Godzina zakończenia dojazdu musi być późniejsza lub równa rozpoczęciu!")
                         elif koniec_dt <= start_dt:
                             st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
+                        elif powrot_koniec_dt < powrot_start_dt:
+                            st.error("Błąd: Godzina zakończenia powrotu musi być późniejsza lub równa rozpoczęciu!")
                         else:
                             AktualneDane = wczytaj_dane()
                             konflikt = sprawdz_konflikt_czasowy(
                                 AktualneDane, wybrany_pracownik_adm, str(data_adm), 
-                                dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt
+                                dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
+                                powrot_start_dt, powrot_koniec_dt
                             )
 
                             if konflikt:
                                 st.error(
-                                    f"❌ Błąd: Wybrane godziny (dojazd lub praca) kolidują z innym wpisem "
-                                    f"pracownika **{wybrany_pracownik_adm}** w tym dniu! Pracownik nie może być w dwóch miejscach naraz ani nakładać na siebie dojazdów/pracy."
+                                    f"❌ Błąd: Wybrane godziny (dojazd, praca lub powrót) kolidują z innym wpisem "
+                                    f"pracownika **{wybrany_pracownik_adm}** w tym dniu!"
                                 )
                             else:
                                 roznica_dojazdu = (dojazd_koniec_dt - dojazd_start_dt).total_seconds() / 3600
                                 roznica_czasu = (koniec_dt - start_dt).total_seconds() / 3600
+                                roznica_powrotu = (powrot_koniec_dt - powrot_start_dt).total_seconds() / 3600
 
                                 stawka_wybranego = pobierz_stawke_pracownika(wybrany_pracownik_adm, str(data_adm))
 
                                 koszt_pracy = roznica_czasu * stawka_wybranego
                                 stawka_dojazdu = stawka_wybranego / 2.0
                                 koszt_dojazdu_zl = roznica_dojazdu * stawka_dojazdu
-                                razem = koszt_pracy + koszt_dojazdu_zl
+                                koszt_powrotu_zl = roznica_powrotu * stawka_dojazdu
+                                razem = koszt_pracy + koszt_dojazdu_zl + koszt_powrotu_zl
 
                                 nowy_wpis_adm = {
                                     "Pracownik": wybrany_pracownik_adm,
@@ -453,6 +510,10 @@ if rola_uzytkownika == "Admin":
                                     "Godziny": round(roznica_czasu, 2),
                                     "Koszt pracy (zł)": round(koszt_pracy, 2),
                                     "Koszt dojazdu (zł)": round(koszt_dojazdu_zl, 2),
+                                    "Powrót Od": str(powrot_od_adm),
+                                    "Powrót Do": str(powrot_do_adm),
+                                    "Czas powrotu (godz)": round(roznica_powrotu, 2),
+                                    "Koszt powrotu (zł)": round(koszt_powrotu_zl, 2),
                                     "Razem (zł)": round(razem, 2),
                                 }
 
@@ -468,15 +529,16 @@ if rola_uzytkownika == "Admin":
 
         dane_systemowe = wczytaj_dane()
         if not dane_systemowe.empty:
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Łączne godziny", f"{dane_systemowe['Godziny'].sum():.2f} h")
-            c2.metric(
-                "Koszt pracy", f"{dane_systemowe['Koszt pracy (zł)'].sum():.2f} zł"
-            )
-            c3.metric(
-                "Koszt dojazdu", f"{dane_systemowe['Koszt dojazdu (zł)'].sum():.2f} zł"
-            )
-            c4.metric("Łączny koszt", f"{dane_systemowe['Razem (zł)'].sum():.2f} zł")
+            # --- ZMODYFIKOWANY UKŁAD METRYK POD URZĄDZENIA MOBILNE (2 RZĘDY) ---
+            mc_a1, mc_a2, mc_a3 = st.columns(3)
+            mc_a1.metric("Łączne godziny", f"{dane_systemowe['Godziny'].sum():.2f} h")
+            mc_a2.metric("Koszt pracy", f"{dane_systemowe['Koszt pracy (zł)'].sum():.2f} zł")
+            mc_a3.metric("Koszt dojazdu", f"{dane_systemowe['Koszt dojazdu (zł)'].sum():.2f} zł")
+            
+            mc_a4, mc_a5 = st.columns(2)
+            mc_a4.metric("Koszt powrotu", f"{dane_systemowe['Koszt powrotu (zł)'].sum():.2f} zł")
+            mc_a5.metric("Łączny koszt", f"{dane_systemowe['Razem (zł)'].sum():.2f} zł")
+            
             st.markdown("---")
 
             st.dataframe(dane_systemowe, use_container_width=True)
@@ -512,7 +574,7 @@ if rola_uzytkownika == "Admin":
             excel_data = convert_df_to_excel_z_tabela(dane_systemowe)
             
             st.download_button(
-                label="📥 Pobierz zaawansowany raport Excel (Budowy x Pracownicy) (.xlsx)",
+                label="📥 Pobierz zaawansowany raport Excel (.xlsx)",
                 data=excel_data,
                 file_name="raport_podsumowanie_budow.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -566,9 +628,7 @@ if rola_uzytkownika == "Admin":
                     st.rerun()
 
         st.markdown("---")
-        st.markdown(
-            "### 📋 Lista pracowników (Edycja profilu i dodawanie podwyżek)"
-        )
+        st.markdown("### 📋 Lista pracowników")
 
         df_pracownicy = wczytaj_pracownikow()
 
@@ -582,30 +642,26 @@ if rola_uzytkownika == "Admin":
                 p_rola = row.get("Rola", "Pracownik")
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
-                col_info, col_edit, col_del = st.columns([3, 1, 1])
+                with st.container(border=True):
+                    st.write(f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
+                    col_edit, col_del = st.columns(2)
 
-                with col_info:
-                    st.write(
-                        f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Akt. stawka:"
-                        f" `{aktualna_s} zł/h`"
-                    )
-
-                with col_edit:
-                    if st.button("✏️ Edytuj / Zmień stawkę", key=f"edit_p_{idx}"):
-                        st.session_state.edytowany_pracownik = p_imie
-                        st.rerun()
-
-                with col_del:
-                    if st.button("🗑️ Usuń", key=f"del_p_{idx}"):
-                        if p_imie == zalogowany_pracownik:
-                            st.error("Nie możesz usunąć samego siebie!")
-                        else:
-                            df_pracownicy = df_pracownicy[
-                                df_pracownicy["Pracownik"] != p_imie
-                            ]
-                            zapisz_pracownikow(df_pracownicy)
-                            st.success(f"Usunięto pracownika: {p_imie}")
+                    with col_edit:
+                        if st.button("✏️ Edytuj", key=f"edit_p_{idx}", use_container_width=True):
+                            st.session_state.edytowany_pracownik = p_imie
                             st.rerun()
+
+                    with col_del:
+                        if st.button("🗑️ Usuń", key=f"del_p_{idx}", use_container_width=True):
+                            if p_imie == zalogowany_pracownik:
+                                st.error("Nie możesz usunąć samego siebie!")
+                            else:
+                                df_pracownicy = df_pracownicy[
+                                    df_pracownicy["Pracownik"] != p_imie
+                                ]
+                                zapisz_pracownikow(df_pracownicy)
+                                st.success(f"Usunięto pracownika: {p_imie}")
+                                st.rerun()
 
             if st.session_state.edytowany_pracownik:
                 cel = st.session_state.edytowany_pracownik
@@ -632,9 +688,7 @@ if rola_uzytkownika == "Admin":
                         )
 
                         st.markdown("---")
-                        st.markdown(
-                            "💰 **Nowa stawka godzinowa (podwyżka / zmiana z datą)**"
-                        )
+                        st.markdown("💰 **Nowa stawka godzinowa**")
                         ostatnia_s = pobierz_stawke_pracownika(cel, None)
                         nowa_stawka_ed = st.number_input(
                             "Stawka (zł/h)", min_value=0.0, value=ostatnia_s, step=5.0
@@ -690,7 +744,7 @@ if rola_uzytkownika == "Admin":
             "Nazwa budowy lub adres", key="input_nowa_budowa"
         )
 
-        if st.button("➕ Dodaj budowę do listy"):
+        if st.button("➕ Dodaj budowę do listy", use_container_width=True):
             czysta_nazwa = nowa_budowa_input.strip()
             if not czysta_nazwa:
                 st.warning("⚠️ Podaj nazwę budowy.")
@@ -703,7 +757,7 @@ if rola_uzytkownika == "Admin":
                     st.error("❌ Taka budowa już istnieje na liście.")
 
         st.markdown("---")
-        st.markdown("### Aktualnie aktywne budowy (Edycja i Usuwanie)")
+        st.markdown("### Aktualnie aktywne budowy")
         aktualne_b = wczytaj_budowy()
 
         if "edytowana_budowa" not in st.session_state:
@@ -712,12 +766,8 @@ if rola_uzytkownika == "Admin":
         if aktualne_b:
             for b in aktualne_b:
                 with st.container(border=True):
-                    col_tekst, col_edit, col_del = st.columns([3, 1, 1])
-                    with col_tekst:
-                        st.markdown(
-                            f"<div style='display: flex; align-items: center; height: 38px;'><b>{b}</b></div>",
-                            unsafe_allow_html=True
-                        )
+                    st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
+                    col_edit, col_del = st.columns(2)
                     with col_edit:
                         if st.button("✏️ Edytuj", key=f"edit_b_{b}", use_container_width=True):
                             st.session_state.edytowana_budowa = b
@@ -737,7 +787,7 @@ if rola_uzytkownika == "Admin":
                     
                     c_zapisz, c_anuluj = st.columns(2)
                     with c_zapisz:
-                        btn_zapisz_b = st.form_submit_button("💾 Zapisz zmianę", use_container_width=True)
+                        btn_zapisz_b = st.form_submit_button("💾 Zapisz", use_container_width=True)
                     with c_anuluj:
                         btn_anuluj_b = st.form_submit_button("❌ Anuluj", use_container_width=True)
 
@@ -788,7 +838,7 @@ else:
             data = st.date_input("Data")
             budowa = st.selectbox("Wybierz budowę", lista_budow)
 
-            st.markdown("🚗 **Czas dojazdu** (licznik naliczany jako 50% stawki)")
+            st.markdown("🚗 **Czas dojazdu** (50% stawki)")
             col_d1, col_d2 = st.columns(2)
             with col_d1:
                 dojazd_od = st.time_input("Dojazd od")
@@ -802,41 +852,49 @@ else:
             with col2:
                 godzina_do = st.time_input("Godzina do")
 
-            submit = st.form_submit_button("Dodaj wpis")
+            st.markdown("🏠 **Czas powrotu** (50% stawki)")
+            col_pow1, col_pow2 = st.columns(2)
+            with col_pow1:
+                powrot_od = st.time_input("Powrót od")
+            with col_pow2:
+                powrot_do = st.time_input("Powrót do")
+
+            submit = st.form_submit_button("Dodaj wpis", use_container_width=True)
 
             if submit:
                 dojazd_start_dt = pd.to_datetime(f"{data} {dojazd_od}")
                 dojazd_koniec_dt = pd.to_datetime(f"{data} {dojazd_do}")
                 start_dt = pd.to_datetime(f"{data} {godzina_od}")
                 koniec_dt = pd.to_datetime(f"{data} {godzina_do}")
+                powrot_start_dt = pd.to_datetime(f"{data} {powrot_od}")
+                powrot_koniec_dt = pd.to_datetime(f"{data} {powrot_do}")
 
                 if dojazd_koniec_dt < dojazd_start_dt:
-                    st.error(
-                        "Błąd: Godzina zakończenia dojazdu musi być późniejsza lub"
-                        " równa rozpoczęciu dojazdu!"
-                    )
+                    st.error("Błąd: Godzina zakończenia dojazdu musi być późniejsza lub równa rozpoczęciu!")
                 elif koniec_dt <= start_dt:
-                    st.error(
-                        "Błąd: Godzina zakończenia pracy musi być późniejsza niż"
-                        " rozpoczęcia!"
-                    )
+                    st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
+                elif powrot_koniec_dt < powrot_start_dt:
+                    st.error("Błąd: Godzina zakończenia powrotu musi być późniejsza lub równa rozpoczęciu!")
                 else:
                     AktualneDane = wczytaj_dane()
                     konflikt = sprawdz_konflikt_czasowy(
                         AktualneDane, zalogowany_pracownik, str(data),
-                        dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt
+                        dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
+                        powrot_start_dt, powrot_koniec_dt
                     )
 
                     if konflikt:
                         st.error(
-                            "❌ Błąd: Wybrane godziny (dojazd lub praca) kolidują z innym Twoim wpisem w tym dniu! "
-                            "Nie możesz być na innej budowie, najeżdżać na czas dojazdu ani być w dwóch miejscach naraz."
+                            "❌ Błąd: Wybrane godziny (dojazd, praca lub powrót) kolidują z innym Twoim wpisem w tym dniu!"
                         )
                     else:
                         roznica_dojazdu = (
                             dojazd_koniec_dt - dojazd_start_dt
                         ).total_seconds() / 3600
                         roznica_czasu = (koniec_dt - start_dt).total_seconds() / 3600
+                        roznica_powrotu = (
+                            powrot_koniec_dt - powrot_start_dt
+                        ).total_seconds() / 3600
 
                         aktualna_stawka = pobierz_stawke_pracownika(
                             zalogowany_pracownik, str(data)
@@ -845,7 +903,8 @@ else:
                         koszt_pracy = roznica_czasu * aktualna_stawka
                         stawka_dojazdu = aktualna_stawka / 2.0
                         koszt_dojazdu_zl = roznica_dojazdu * stawka_dojazdu
-                        razem = koszt_pracy + koszt_dojazdu_zl
+                        koszt_powrotu_zl = roznica_powrotu * stawka_dojazdu
+                        razem = koszt_pracy + koszt_dojazdu_zl + koszt_powrotu_zl
 
                         nowy_wpis = {
                             "Pracownik": zalogowany_pracownik,
@@ -860,6 +919,10 @@ else:
                             "Godziny": round(roznica_czasu, 2),
                             "Koszt pracy (zł)": round(koszt_pracy, 2),
                             "Koszt dojazdu (zł)": round(koszt_dojazdu_zl, 2),
+                            "Powrót Od": str(powrot_od),
+                            "Powrót Do": str(powrot_do),
+                            "Czas powrotu (godz)": round(roznica_powrotu, 2),
+                            "Koszt powrotu (zł)": round(koszt_powrotu_zl, 2),
                             "Razem (zł)": round(razem, 2),
                         }
 
@@ -881,10 +944,15 @@ else:
         moje_dane = AktualneDane[AktualneDane["Pracownik"] == zalogowany_pracownik]
 
         if not moje_dane.empty:
-            mc1, mc2, mc3 = st.columns(3)
+            # --- ZMODYFIKOWANY UKŁAD METRYK DLA PRACOWNIKA (2 RZĘDY) ---
+            mc1, mc2 = st.columns(2)
             mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
             mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
-            mc3.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
+            
+            mc3, mc4 = st.columns(2)
+            mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł")
+            mc4.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
+            
             st.markdown("---")
 
             st.dataframe(moje_dane, use_container_width=True)
@@ -907,6 +975,7 @@ else:
                 mime=(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 ),
+                use_container_width=True,
             )
         else:
             st.info("Nie masz jeszcze żadnych wpisów.")
