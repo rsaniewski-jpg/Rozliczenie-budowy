@@ -16,14 +16,83 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS (Poprawiony selektor zgodny z nowymi wersjami Streamlit) ---
+# --- ELEGANCKI, BIZNESOWY STYL CSS ---
 st.markdown(
     """
     <style>
-    /* Poprawiony styl przycisków głównych */
-    .stButton > button[data-baseweb="button"] {
-        border-radius: 4px;
-        font-weight: 500;
+    /* Ogólne tło i czcionka */
+    .stApp {
+        background-color: #F8FAFC;
+        color: #1E293B;
+    }
+    
+    /* Nagłówki */
+    h1, h2, h3 {
+        color: #0F172A;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+    }
+
+    /* Eleganckie przyciski główne i domyślne */
+    .stButton > button {
+        background-color: #0284C7 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 500 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .stButton > button:hover {
+        background-color: #0369A1 !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        transform: translateY(-1px);
+    }
+
+    /* Pola tekstowe i formularze */
+    .stTextInput > div > div > input, .stSelectbox > div > div > div, .stDateInput > div > div > input, .stTimeInput > div > div > input {
+        border-radius: 8px !important;
+        border: 1px solid #CBD5E1 !important;
+        background-color: #FFFFFF !important;
+    }
+
+    /* Metryki (karty podsumowań) */
+    [data-testid="stMetric"] {
+        background-color: #FFFFFF;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        border: 1px solid #E2E8F0;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: #0284C7 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Panel boczny */
+    [data-testid="stSidebar"] {
+        background-color: #0F172A;
+        color: #F1F5F9;
+    }
+    
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown {
+        color: #F1F5F9 !important;
+    }
+    
+    [data-testid="stSidebar"] input {
+        background-color: #1E293B !important;
+        color: white !important;
+        border: 1px solid #334155 !important;
+    }
+
+    /* Expander i ramki */
+        streamlit-expander {
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        background-color: #FFFFFF;
     }
     </style>
 """,
