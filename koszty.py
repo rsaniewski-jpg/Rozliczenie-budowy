@@ -47,11 +47,11 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* Przyciski */
+    /* Zmniejszone przyciski (bardziej zgrabne i kompaktowe) */
     div.row-widget.stButton > button {
         width: 100% !important;
-        padding: 0.35rem 0.5rem !important;
-        font-size: 1rem !important;
+        padding: 0.2rem 0.4rem !important;
+        font-size: 0.85rem !important;
     }
 
     /* --- RESPONSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
@@ -639,7 +639,6 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    # ZWIĘKSZONA SZEROKOŚĆ KOLUMNY NA PRZYCISKI, ŻEBY IKONY BYŁY WIDOCZNE
                     col_info, col_przyciski = st.columns([7.0, 3.0])
                     with col_info:
                         st.write(f"👤 **{p_imie}** (`{p_email}`) \n Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
@@ -764,7 +763,6 @@ if rola_uzytkownika == "Admin":
         if aktualne_b:
             for b in aktualne_b:
                 with st.container(border=True):
-                    # ZWIĘKSZONA SZEROKOŚĆ KOLUMNY NA PRZYCISKI
                     col_info_b, col_przyciski_b = st.columns([7.0, 3.0])
                     with col_info_b:
                         st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
