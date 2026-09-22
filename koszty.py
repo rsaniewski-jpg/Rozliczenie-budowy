@@ -823,11 +823,6 @@ else:
     # --- PANEL DLA ZWYKŁEGO PRACOWNIKA ---
     st.subheader(f"Witaj, {zalogowany_pracownik}!")
 
-    # OPCJONALNE: Włączenie wyświetlania stawki godzinowej dla pracownika.
-    # Aby włączyć, usuń znaki '#' z poniższych dwóch linijek:
-    # stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
-    # st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
-
     if not lista_budow:
         st.error(
             "❌ Brak dostępnych budów w systemie. Poproś administratora o dodanie"
@@ -947,19 +942,12 @@ else:
             mc1, mc2 = st.columns(2)
             mc1.metric("Twoje godziny pracy", f"{moje_dane['Godziny'].sum():.2f} h")
             
-            # Sumujemy czas dojazdu i powrotu do jednej metryki:
             suma_dojazdow = moje_dane['Czas dojazdu (godz)'].sum() + moje_dane['Czas powrotu (godz)'].sum()
             mc2.metric("Twoje godziny dojazdu", f"{suma_dojazdow:.2f} h")
             
-            # OPCJONALNE: Metryki finansowe (zakomentowane).
-            # Aby z nich korzystać, usuń znaki '#' poniżej:
-            # mc3, mc4 = st.columns(2)
-            # mc3.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
-            # mc4.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
-            
             st.markdown("---")
 
-            # Wyświetlenie tabeli na ekranie z możliwością łatwego włączania/wyłączania kolumn
+            # Definicja kolumn ukrywanych zarówno na ekranie, jak i w pliku Excel dla pracownika
             kolumny_do_ukrycia = [
                 "Pracownik", 
                 "Stawka (zł/h)", 
@@ -982,8 +970,8 @@ else:
                 return output.getvalue()
 
 
-            # Do pliku Excel przekazujemy pełne dane (z imieniem i nazwiskiem oraz stawkami/kosztami)
-            excel_data = convert_df_to_excel(moje_dane)
+            # Do pliku Excel przekazujemy oczyszczone dane (bez stawek i kosztów)
+            excel_data = convert_df_to_excel(moje_dane_ekran)
             st.download_button(
                 label="📥 Pobierz moje rozliczenie do Excela (.xlsx)",
                 data=excel_data,
