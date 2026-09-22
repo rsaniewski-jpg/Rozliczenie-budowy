@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS (ZACHOWUJĄCY ORYGINALNE TŁO I POPRAWNE CHOWANIE MENU) ---
+# --- WŁASNY STYL CSS (PRZYWRÓCONE TŁO KONTENERÓW + POPRAWNE MENU) ---
 st.markdown(
     """
     <style>
@@ -29,6 +29,12 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
+    /* Przywrócone wyraźniejsze, jasne tło kontenerów z budowami/pracownikami */
+    [data-testid="stContainer"] {
+        background-color: #e9ecef;
+        border-radius: 8px;
+        padding: 6px;
+    }
     /* Ukrycie napisu "Press enter to apply" pod polami */
     [data-testid="InputInstructions"] {
         display: none;
@@ -40,7 +46,7 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* --- RESPSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
+    /* --- RESPANSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (bez blokowania menu) --- */
     @media (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
