@@ -16,17 +16,30 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS (WYMUSZENIE JASNEGO MOTYWU I ORYGINALNYCH KOLORÓW) ---
+# --- WŁASNY STYL CSS (WYMUSZENIE JASNEGO MOTYWU DLA STRONY I PANELU BOCZNEGO) ---
 st.markdown(
     """
     <style>
-    /* Wymuszenie jasnego motywu, aby telefon nie włączał automatycznie ciemnego trybu */
+    /* Wymuszenie jasnego motywu systemu */
     :root {
         color-scheme: light;
     }
     
     /* Główne tło aplikacji jako jasne */
     .stApp {
+        background-color: #FFFFFF !important;
+        color: #31333F !important;
+    }
+
+    /* Wymuszenie jasnego tła i kolorów w panelu bocznym (sidebar) */
+    [data-testid="stSidebar"] {
+        background-color: #f8f9fa !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #31333F !important;
+    }
+    /* Poprawka dla pól tekstowych i formularzy w sidebarze */
+    [data-testid="stSidebar"] input {
         background-color: #FFFFFF !important;
         color: #31333F !important;
     }
@@ -60,7 +73,7 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* --- RESPANSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (bez blokowania menu) --- */
+    /* --- RESPANSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
     @media (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
@@ -535,7 +548,6 @@ if rola_uzytkownika == "Admin":
 
         dane_systemowe = wczytaj_dane()
         if not dane_systemowe.empty:
-            # --- UKŁAD METRYK POD URZĄDZENIA MOBILNE (2 RZĘDY) ---
             mc_a1, mc_a2, mc_a3 = st.columns(3)
             mc_a1.metric("Łączne godziny", f"{dane_systemowe['Godziny'].sum():.2f} h")
             mc_a2.metric("Koszt pracy", f"{dane_systemowe['Koszt pracy (zł)'].sum():.2f} zł")
@@ -950,7 +962,6 @@ else:
         moje_dane = AktualneDane[AktualneDane["Pracownik"] == zalogowany_pracownik]
 
         if not moje_dane.empty:
-            # --- UKŁAD METRYK DLA PRACOWNIKA (2 RZĘDY) ---
             mc1, mc2 = st.columns(2)
             mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
             mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
