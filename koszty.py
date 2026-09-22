@@ -62,7 +62,7 @@ def wczytaj_pracownikow():
         df_domyslne = pd.DataFrame(
             {
                 "Email": ["jan.kowalski@firma.pl", "adam.nowak@firma.pl", "admin@firma.pl"],
-                "Haslo": ["1234", "5678", "0000"],
+                "Haslo": ["1234", "5678", "1910"],
                 "Pracownik": ["Jan Kowalski", "Adam Nowak", "Admin"],
                 "Rola": ["Pracownik", "Pracownik", "Admin"],
             }
