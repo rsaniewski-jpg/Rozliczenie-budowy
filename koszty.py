@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS Z OPTYMALIZACJĄ MOBILNĄ ---
+# --- WŁASNY STYL CSS Z OPTYMALIZACJĄ MOBILNĄ I ZMNIEJSZONYMI PRZYCISKAMI IKONOWYMI ---
 st.markdown(
     """
     <style>
@@ -39,6 +39,15 @@ st.markdown(
     [data-testid="InputInstructions"] {
         display: none;
     }
+    
+    /* Zmniejszenie przycisków będących samymi ikonami (tylko w sekcji pracowników) do minimalnego rozmiaru */
+    [data-testid="stHorizontalBlock"] div.stButton > button {
+        padding: 0.2rem 0.4rem !important;
+        min-height: unset !important;
+        height: 38px !important;
+        font-size: 1rem !important;
+    }
+
     /* Domyślna szerokość dla komputerów */
     .block-container {
         max-width: 920px !important;
@@ -642,8 +651,8 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    # Układ w jednej linii: dane pracownika oraz ikony edycji/usuwania
-                    col_info, col_edit, col_del = st.columns([8, 1, 1])
+                    # Układ w jednej linii: dane pracownika oraz pomniejszone ikony edycji/usuwania
+                    col_info, col_edit, col_del = st.columns([10, 1, 1])
 
                     with col_info:
                         st.markdown(f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
