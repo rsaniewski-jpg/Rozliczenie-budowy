@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- WŁASNY STYL CSS Z POPRAWIONYM CHOWANIEM MENU ---
+# --- WŁASNY STYL CSS Z POPRAWIONYM CHOWANIEM MENU I PRZYCISKAMI ---
 st.markdown(
     """
     <style>
@@ -45,6 +45,12 @@ st.markdown(
         max-width: 920px !important;
         padding-top: 2rem;
         padding-bottom: 2rem;
+    }
+
+    /* Zwężenie przycisków edycji/usuwania, żeby były blisko siebie */
+    div.row-widget.stButton > button {
+        width: auto !important;
+        padding: 0.25rem 0.5rem !important;
     }
 
     /* --- RESPONSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
@@ -632,25 +638,27 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    # Zmniejszone przyciski akcji (zmieniono szerokość kolumn dla przycisków na węższe)
-                    col_info, col_edit, col_del = st.columns([6, 1.2, 1.2])
+                    # Bardzo wąska prawa kolumna [9, 0.8] sprawia, że przyciski są ściśnięte obok siebie
+                    col_info, col_przyciski = st.columns([9.0, 0.8])
                     with col_info:
                         st.write(f"👤 **{p_imie}** (`{p_email}`) \n Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
-                    with col_edit:
-                        if st.button("✏️", key=f"edit_p_{idx}", help="Edytuj"):
-                            st.session_state.edytowany_pracownik = p_imie
-                            st.rerun()
-                    with col_del:
-                        if st.button("🗑️", key=f"del_p_{idx}", help="Usuń"):
-                            if p_imie == zalogowany_pracownik:
-                                st.error("Nie możesz usunąć samego siebie!")
-                            else:
-                                df_pracownicy = df_pracownicy[
-                                    df_pracownicy["Pracownik"] != p_imie
-                                ]
-                                zapisz_pracownikow(df_pracownicy)
-                                st.success(f"Usunięto pracownika: {p_imie}")
+                    with col_przyciski:
+                        sub_c1, sub_c2 = st.columns(2)
+                        with sub_c1:
+                            if st.button("✏️", key=f"edit_p_{idx}", help="Edytuj"):
+                                st.session_state.edytowany_pracownik = p_imie
                                 st.rerun()
+                        with sub_c2:
+                            if st.button("🗑️", key=f"del_p_{idx}", help="Usuń"):
+                                if p_imie == zalogowany_pracownik:
+                                    st.error("Nie możesz usunąć samego siebie!")
+                                else:
+                                    df_pracownicy = df_pracownicy[
+                                        df_pracownicy["Pracownik"] != p_imie
+                                    ]
+                                    zapisz_pracownikow(df_pracownicy)
+                                    st.success(f"Usunięto pracownika: {p_imie}")
+                                    st.rerun()
 
             if st.session_state.edytowany_pracownik:
                 cel = st.session_state.edytowany_pracownik
@@ -755,19 +763,21 @@ if rola_uzytkownika == "Admin":
         if aktualne_b:
             for b in aktualne_b:
                 with st.container(border=True):
-                    # Zmniejszone przyciski akcji dla budów
-                    col_info_b, col_edit_b, col_del_b = st.columns([6, 1.2, 1.2])
+                    # Bardzo wąska prawa kolumna [9, 0.8] dla budów
+                    col_info_b, col_przyciski_b = st.columns([9.0, 0.8])
                     with col_info_b:
                         st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
-                    with col_edit_b:
-                        if st.button("✏️", key=f"edit_b_{b}", help="Edytuj"):
-                            st.session_state.edytowana_budowa = b
-                            st.rerun()
-                    with col_del_b:
-                        if st.button("🗑️", key=f"del_{b}", help="Usuń"):
-                            usun_budowe(b)
-                            st.success(f"Usunięto budowę: {b}")
-                            st.rerun()
+                    with col_przyciski_b:
+                        sub_cb1, sub_cb2 = st.columns(2)
+                        with sub_cb1:
+                            if st.button("✏️", key=f"edit_b_{b}", help="Edytuj"):
+                                st.session_state.edytowana_budowa = b
+                                st.rerun()
+                        with sub_cb2:
+                            if st.button("🗑️", key=f"del_{b}", help="Usuń"):
+                                usun_budowe(b)
+                                st.success(f"Usunięto budowę: {b}")
+                                st.rerun()
 
             if st.session_state.edytowana_budowa:
                 st.markdown("---")
