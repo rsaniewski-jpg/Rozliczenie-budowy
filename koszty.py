@@ -10,13 +10,13 @@ sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
 if os.path.exists(sciezka_favicony):
     ikonka = Image.open(sciezka_favicony)
 else:
-    ikonka = "🏗️"  # Awaryjna ikona tekstowa
+    ikonka = "🏗️"
 
 st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- ELEGANCKI, BIZNESOWY STYL CSS ---
+# --- ELEGANCKI, BIZNESOWY STYL CSS (NAPRAWIONY) ---
 st.markdown(
     """
     <style>
@@ -51,11 +51,12 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Pola tekstowe i formularze */
+    /* Pola tekstowe i formularze w głównej części */
     .stTextInput > div > div > input, .stSelectbox > div > div > div, .stDateInput > div > div > input, .stTimeInput > div > div > input {
         border-radius: 8px !important;
         border: 1px solid #CBD5E1 !important;
         background-color: #FFFFFF !important;
+        color: #1E293B !important;
     }
 
     /* Metryki (karty podsumowań) */
@@ -72,7 +73,7 @@ st.markdown(
         font-weight: 700 !important;
     }
 
-    /* Panel boczny */
+    /* Panel boczny - poprawiony, aby pola były widoczne i czytelne */
     [data-testid="stSidebar"] {
         background-color: #0F172A;
         color: #F1F5F9;
@@ -82,17 +83,12 @@ st.markdown(
         color: #F1F5F9 !important;
     }
     
+    /* Poprawka pól tekstowych w panelu bocznym (żeby wpisany tekst był czarny na białym tle lub poprawnie widoczny) */
     [data-testid="stSidebar"] input {
-        background-color: #1E293B !important;
-        color: white !important;
+        background-color: #FFFFFF !important;
+        color: #1E293B !important;
         border: 1px solid #334155 !important;
-    }
-
-    /* Expander i ramki */
-        streamlit-expander {
-        border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        background-color: #FFFFFF;
+        border-radius: 8px !important;
     }
     </style>
 """,
@@ -378,7 +374,6 @@ if rola_uzytkownika == "Admin":
     if menu_admin == "📊 Raport wszystkich wpisów":
         st.markdown("### Raport godzin i kosztów całej firmy")
 
-        # --- SEKCJA DOPISYWANIA GODZIN W GÓRNEJ CZĘŚCI RAPORTU ---
         with st.expander("➕ Dopisz godziny dla pracownika (kliknij, aby rozwinąć)"):
             df_pracownicy_adm = wczytaj_pracownikow()
             lista_pracownikow_nazwy = df_pracownicy_adm["Pracownik"].tolist()
@@ -420,7 +415,6 @@ if rola_uzytkownika == "Admin":
                         elif koniec_dt <= start_dt:
                             st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
                         else:
-                            # --- SPRAWDZENIE KONFLIKTU GODZIN DLA ADMINA ---
                             konflikt = False
                             AktualneDane = wczytaj_dane()
 
@@ -584,9 +578,7 @@ if rola_uzytkownika == "Admin":
                     st.rerun()
 
         st.markdown("---")
-        st.markdown(
-            "### 📋 Lista pracowników (Edycja profilu i dodawanie podwyżek)"
-        )
+        st.markdown("### 📋 Lista pracowników (Edycja profilu i dodawanie podwyżek)")
 
         df_pracownicy = wczytaj_pracownikow()
 
@@ -650,9 +642,7 @@ if rola_uzytkownika == "Admin":
                         )
 
                         st.markdown("---")
-                        st.markdown(
-                            "💰 **Nowa stawka godzinowa (podwyżka / zmiana z datą)**"
-                        )
+                        st.markdown("💰 **Nowa stawka godzinowa (podwyżka / zmiana z datą)**")
                         ostatnia_s = pobierz_stawke_pracownika(cel, None)
                         nowa_stawka_ed = st.number_input(
                             "Stawka (zł/h)", min_value=0.0, value=ostatnia_s, step=5.0
