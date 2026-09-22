@@ -29,11 +29,15 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
-    /* Delikatne wyszarzenie tła kontenerów z budowami */
+    /* Wyraźniejsze wyszarzenie tła kontenerów z budowami */
     [data-testid="stContainer"] {
-        background-color: #f8f9fa;
+        background-color: #e9ecef;
         border-radius: 8px;
         padding: 4px;
+    }
+    /* Ukrycie napisu "Press enter to apply" pod polami */
+    [data-testid="InputInstructions"] {
+        display: none;
     }
     </style>
 """,
@@ -223,10 +227,13 @@ if os.path.exists(sciezka_pelne_logo):
 # --- PANEL LOGOWANIA / UŻYTKOWNIKA ---
 if not st.session_state.zalogowany:
     st.sidebar.header("🔐 Logowanie")
-    email_input = st.sidebar.text_input("Adres e-mail")
-    haslo_input = st.sidebar.text_input("Hasło", type="password")
+    
+    with st.sidebar.form("form_logowania"):
+        email_input = st.text_input("Adres e-mail")
+        haslo_input = st.text_input("Hasło", type="password")
+        submit_logowanie = st.form_submit_button("Zaloguj się")
 
-    if st.sidebar.button("Zaloguj się"):
+    if submit_logowanie:
         df_pracownicy = wczytaj_pracownikow()
         pasujacy = df_pracownicy[
             (df_pracownicy["Email"].str.lower() == email_input.strip().lower()) & 
@@ -242,7 +249,7 @@ if not st.session_state.zalogowany:
             st.sidebar.error("❌ Błędny e-mail lub hasło!")
 
     st.info(
-        "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i kliknij 'Zaloguj się'."
+        "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i wciśnij **Enter** (lub kliknij 'Zaloguj się')."
         "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
     )
     st.stop()
@@ -673,7 +680,6 @@ if rola_uzytkownika == "Admin":
                 with st.container(border=True):
                     col_tekst, col_edit, col_del = st.columns([3, 1, 1])
                     with col_tekst:
-                        # Tekst wyśrodkowany w pionie z przyciskami (wysokość ~38px) bez ikony dźwigu
                         st.markdown(
                             f"<div style='display: flex; align-items: center; height: 38px;'><b>{b}</b></div>",
                             unsafe_allow_html=True
