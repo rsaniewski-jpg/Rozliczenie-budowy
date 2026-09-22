@@ -62,7 +62,7 @@ def wczytaj_pracownikow():
         df_domyslne = pd.DataFrame(
             {
                 "Email": ["jan.kowalski@firma.pl", "adam.nowak@firma.pl", "admin@firma.pl"],
-                "Haslo": ["1234", "5678", "0000"],
+                "Haslo": ["1234", "5678", "1910"],
                 "Pracownik": ["Jan Kowalski", "Adam Nowak", "Admin"],
                 "Rola": ["Pracownik", "Pracownik", "Admin"],
             }
@@ -237,8 +237,7 @@ if not st.session_state.zalogowany:
 
     st.info(
         "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i kliknij 'Zaloguj się'."
-        "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
-    )
+        )
     st.stop()
 
 zalogowany_pracownik = st.session_state.aktualny_pracownik
