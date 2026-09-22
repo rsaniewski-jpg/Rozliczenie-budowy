@@ -823,8 +823,10 @@ else:
     # --- PANEL DLA ZWYKŁEGO PRACOWNIKA ---
     st.subheader(f"Witaj, {zalogowany_pracownik}!")
 
-    stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
-    st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
+    # OPCJONALNE: Włączenie wyświetlania stawki godzinowej dla pracownika.
+    # Aby włączyć, usuń znaki '#' z poniższych dwóch linijek:
+    # stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
+    # st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
 
     if not lista_budow:
         st.error(
@@ -930,10 +932,7 @@ else:
                             [AktualneDane, pd.DataFrame([nowy_wpis])], ignore_index=True
                         )
                         zapisz_dane(AktualneDane)
-                        st.success(
-                            f"✅ Zapisano pomyślnie! (Rozliczono wg stawki z dnia"
-                            f" {data}: {aktualna_stawka} zł/h)"
-                        )
+                        st.success("✅ Zapisano pomyślnie!")
 
     # --- WIDOK WŁASNYCH WPISÓW PRACOWNIKA ---
     st.markdown("---")
@@ -944,14 +943,19 @@ else:
         moje_dane = AktualneDane[AktualneDane["Pracownik"] == zalogowany_pracownik]
 
         if not moje_dane.empty:
-            # --- ZMODYFIKOWANY UKŁAD METRYK DLA PRACOWNIKA (2 RZĘDY) ---
+            # --- ZMODYFIKOWANY UKŁAD METRYK DLA PRACOWNIKA ---
             mc1, mc2 = st.columns(2)
-            mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
-            mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
+            mc1.metric("Twoje godziny pracy", f"{moje_dane['Godziny'].sum():.2f} h")
             
-            mc3, mc4 = st.columns(2)
-            mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł")
-            mc4.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
+            # Sumujemy czas dojazdu i powrotu do jednej metryki:
+            suma_dojazdow = moje_dane['Czas dojazdu (godz)'].sum() + moje_dane['Czas powrotu (godz)'].sum()
+            mc2.metric("Twoje godziny dojazdu", f"{suma_dojazdow:.2f} h")
+            
+            # OPCJONALNE: Metryki finansowe (zakomentowane).
+            # Aby z nich korzystać, usuń znaki '#' poniżej:
+            # mc3, mc4 = st.columns(2)
+            # mc3.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
+            # mc4.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
             
             st.markdown("---")
 
