@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS Z OPTYMALIZACJĄ MOBILNĄ ---
+# --- WŁASNY STYL CSS (ZACHOWUJĄCY ORYGINALNE TŁO I POPRAWNE CHOWANIE MENU) ---
 st.markdown(
     """
     <style>
@@ -29,37 +29,23 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
-    /* Wyraźniejsze wyszarzenie tła kontenerów z budowami */
-    [data-testid="stContainer"] {
-        background-color: #e9ecef;
-        border-radius: 8px;
-        padding: 4px;
-    }
     /* Ukrycie napisu "Press enter to apply" pod polami */
     [data-testid="InputInstructions"] {
         display: none;
     }
-    /* Domyślna szerokość dla komputerów */
+    /* Domyślna szerokość główna dla komputerów */
     .block-container {
         max-width: 920px !important;
         padding-top: 2rem;
         padding-bottom: 2rem;
     }
-    [data-testid="stSidebar"] {
-        min-width: 320px !important;
-        max-width: 320px !important;
-    }
 
-    /* --- RESPSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (smartfony) --- */
+    /* --- RESPSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
     @media (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
-        }
-        [data-testid="stSidebar"] {
-            min-width: 100% !important;
-            max-width: 100% !important;
         }
         h1 { font-size: 1.5rem !important; }
         h2 { font-size: 1.3rem !important; }
@@ -529,7 +515,7 @@ if rola_uzytkownika == "Admin":
 
         dane_systemowe = wczytaj_dane()
         if not dane_systemowe.empty:
-            # --- ZMODYFIKOWANY UKŁAD METRYK POD URZĄDZENIA MOBILNE (2 RZĘDY) ---
+            # --- UKŁAD METRYK POD URZĄDZENIA MOBILNE (2 RZĘDY) ---
             mc_a1, mc_a2, mc_a3 = st.columns(3)
             mc_a1.metric("Łączne godziny", f"{dane_systemowe['Godziny'].sum():.2f} h")
             mc_a2.metric("Koszt pracy", f"{dane_systemowe['Koszt pracy (zł)'].sum():.2f} zł")
@@ -944,7 +930,7 @@ else:
         moje_dane = AktualneDane[AktualneDane["Pracownik"] == zalogowany_pracownik]
 
         if not moje_dane.empty:
-            # --- ZMODYFIKOWANY UKŁAD METRYK DLA PRACOWNIKA (2 RZĘDY) ---
+            # --- UKŁAD METRYK DLA PRACOWNIKA (2 RZĘDY) ---
             mc1, mc2 = st.columns(2)
             mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
             mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
