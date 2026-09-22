@@ -29,6 +29,12 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
+    /* Delikatne wyszarzenie tła kontenerów z budowami */
+    [data-testid="stContainer"] {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 4px;
+    }
     </style>
 """,
     unsafe_allow_html=True,
@@ -62,7 +68,7 @@ def wczytaj_pracownikow():
         df_domyslne = pd.DataFrame(
             {
                 "Email": ["jan.kowalski@firma.pl", "adam.nowak@firma.pl", "admin@firma.pl"],
-                "Haslo": ["1234", "5678", "1910"],
+                "Haslo": ["1234", "5678", "0000"],
                 "Pracownik": ["Jan Kowalski", "Adam Nowak", "Admin"],
                 "Rola": ["Pracownik", "Pracownik", "Admin"],
             }
@@ -237,7 +243,8 @@ if not st.session_state.zalogowany:
 
     st.info(
         "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i kliknij 'Zaloguj się'."
-        )
+        "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
+    )
     st.stop()
 
 zalogowany_pracownik = st.session_state.aktualny_pracownik
@@ -663,18 +670,23 @@ if rola_uzytkownika == "Admin":
 
         if aktualne_b:
             for b in aktualne_b:
-                col_tekst, col_edit, col_del = st.columns([3, 1, 1])
-                with col_tekst:
-                    st.write(f"🏗️ **{b}**")
-                with col_edit:
-                    if st.button("✏️ Edytuj", key=f"edit_b_{b}"):
-                        st.session_state.edytowana_budowa = b
-                        st.rerun()
-                with col_del:
-                    if st.button("🗑️ Usuń", key=f"del_{b}"):
-                        usun_budowe(b)
-                        st.success(f"Usunięto budowę: {b}")
-                        st.rerun()
+                with st.container(border=True):
+                    col_tekst, col_edit, col_del = st.columns([3, 1, 1])
+                    with col_tekst:
+                        # Tekst wyśrodkowany w pionie z przyciskami (wysokość ~38px) bez ikony dźwigu
+                        st.markdown(
+                            f"<div style='display: flex; align-items: center; height: 38px;'><b>{b}</b></div>",
+                            unsafe_allow_html=True
+                        )
+                    with col_edit:
+                        if st.button("✏️ Edytuj", key=f"edit_b_{b}", use_container_width=True):
+                            st.session_state.edytowana_budowa = b
+                            st.rerun()
+                    with col_del:
+                        if st.button("🗑️ Usuń", key=f"del_{b}", use_container_width=True):
+                            usun_budowe(b)
+                            st.success(f"Usunięto budowę: {b}")
+                            st.rerun()
 
             if st.session_state.edytowana_budowa:
                 st.markdown("---")
