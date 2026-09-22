@@ -3,9 +3,13 @@ from PIL import Image
 import pandas as pd
 import streamlit as st
 
-# Ścieżka do favicony (małe logo) oraz pełnego logo w folderze "loga"
-sciezka_favicony = os.path.join("loga", "logo.png")
-sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
+# Zmień to na chwilę:
+# sciezka_favicony = os.path.join("loga", "logo.png")
+# sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
+
+# Na coś takiego (zabezpieczenie przed brakiem folderu):
+sciezka_favicony = "logo.png" if os.path.exists("logo.png") else "🏗️"
+sciezka_pelne_logo = "logo_pelne.png" if os.path.exists("logo_pelne.png") else ""
 
 if os.path.exists(sciezka_favicony):
     ikonka = Image.open(sciezka_favicony)
