@@ -39,6 +39,15 @@ st.markdown(
     [data-testid="InputInstructions"] {
         display: none;
     }
+    /* Zwiększenie szerokości głównego kontenera, aby długi tytuł mieścił się w jednej linii */
+    .block-container {
+        max-width: 920px !important;
+    }
+    /* Zablokowanie / ustalenie stałej szerokości lewego paska bocznego */
+    [data-testid="stSidebar"] {
+        min-width: 320px !important;
+        max-width: 320px !important;
+    }
     </style>
 """,
     unsafe_allow_html=True,
@@ -250,7 +259,7 @@ if not st.session_state.zalogowany:
 
     st.info(
         "👈 Wpisz swój adres e-mail oraz hasło w panelu po lewej stronie i wciśnij **Enter** (lub kliknij 'Zaloguj się')."
-        
+        "\n\n*(Domyślny login administratora to: `admin@firma.pl` / hasło: `0000`)*"
     )
     st.stop()
 
