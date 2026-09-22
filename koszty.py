@@ -12,7 +12,7 @@ if os.path.exists(sciezka_favicony):
 else:
     ikonka = "🏗️"
 
-# --- DOMYŚLNIE ZWINIĘTE MENU NA START (KLUCZOWE DLA MOBILE) ---
+# --- DOMYŚLNIE ZWINIĘTE MENU NA START ---
 st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", 
     page_icon=ikonka, 
@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- WŁASNY STYL CSS Z POPRAWIONYM CHOWANIEM MENU I PRZYCISKAMI ---
+# --- WŁASNY STYL CSS Z NAPRAWIONYMI IKONAMI W PRZYCISKACH ---
 st.markdown(
     """
     <style>
@@ -47,10 +47,11 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* Zwężenie przycisków edycji/usuwania, żeby były blisko siebie */
+    /* Poprawione przyciski: automatyczna szerokość, ale z zachowaniem widoczności ikon */
     div.row-widget.stButton > button {
         width: auto !important;
-        padding: 0.25rem 0.5rem !important;
+        padding: 0.35rem 0.6rem !important;
+        font-size: 1rem !important;
     }
 
     /* --- RESPONSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
@@ -638,7 +639,6 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    # Bardzo wąska prawa kolumna [9, 0.8] sprawia, że przyciski są ściśnięte obok siebie
                     col_info, col_przyciski = st.columns([9.0, 0.8])
                     with col_info:
                         st.write(f"👤 **{p_imie}** (`{p_email}`) \n Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
@@ -763,7 +763,6 @@ if rola_uzytkownika == "Admin":
         if aktualne_b:
             for b in aktualne_b:
                 with st.container(border=True):
-                    # Bardzo wąska prawa kolumna [9, 0.8] dla budów
                     col_info_b, col_przyciski_b = st.columns([9.0, 0.8])
                     with col_info_b:
                         st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
