@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", page_icon=ikonka, layout="centered"
 )
 
-# --- WŁASNY STYL CSS Z OPTYMALIZACJĄ MOBILNĄ I ZMNIEJSZONYMI PRZYCISKAMI IKONOWYMI ---
+# --- WŁASNY STYL CSS Z POPRAWIONĄ OBSŁUGĄ MOBILNĄ MENU ---
 st.markdown(
     """
     <style>
@@ -29,7 +29,7 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
-    /* Wyraźniejsze wyszarzenie tła kontenerów z budowami / pracownikami */
+    /* Wyraźniejsze wyszarzenie tła kontenerów z budowami */
     [data-testid="stContainer"] {
         background-color: #e9ecef;
         border-radius: 8px;
@@ -39,15 +39,6 @@ st.markdown(
     [data-testid="InputInstructions"] {
         display: none;
     }
-    
-    /* Zmniejszenie przycisków będących samymi ikonami do minimalnego rozmiaru */
-    [data-testid="stHorizontalBlock"] div.stButton > button {
-        padding: 0.2rem 0.4rem !important;
-        min-height: unset !important;
-        height: 38px !important;
-        font-size: 1rem !important;
-    }
-
     /* Domyślna szerokość dla komputerów */
     .block-container {
         max-width: 920px !important;
@@ -59,15 +50,16 @@ st.markdown(
         max-width: 320px !important;
     }
 
-    /* --- RESPANSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (smartfony) --- */
+    /* --- RESPONSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (smartfony) --- */
     @media (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
         }
+        /* Pozwól Streamlit poprawnie zarządzać chowaniem i szerokością menu na mobile */
         [data-testid="stSidebar"] {
-            min-width: 100% !important;
+            width: 100% !important;
             max-width: 100% !important;
         }
         h1 { font-size: 1.5rem !important; }
@@ -651,18 +643,16 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    col_info, col_edit, col_del = st.columns([10, 1, 1])
-
-                    with col_info:
-                        st.markdown(f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
+                    st.write(f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
+                    col_edit, col_del = st.columns(2)
 
                     with col_edit:
-                        if st.button("✏️", key=f"edit_p_{idx}", help="Edytuj pracownika", use_container_width=True):
+                        if st.button("✏️ Edytuj", key=f"edit_p_{idx}", use_container_width=True):
                             st.session_state.edytowany_pracownik = p_imie
                             st.rerun()
 
                     with col_del:
-                        if st.button("🗑️", key=f"del_p_{idx}", help="Usuń pracownika", use_container_width=True):
+                        if st.button("🗑️ Usuń", key=f"del_p_{idx}", use_container_width=True):
                             if p_imie == zalogowany_pracownik:
                                 st.error("Nie możesz usunąć samego siebie!")
                             else:
@@ -776,19 +766,14 @@ if rola_uzytkownika == "Admin":
         if aktualne_b:
             for b in aktualne_b:
                 with st.container(border=True):
-                    # Układ w jednej linii: nazwa budowy oraz ikony edycji/usuwania
-                    col_info, col_edit, col_del = st.columns([10, 1, 1])
-
-                    with col_info:
-                        st.markdown(f"🏗️ **{b}**")
-
+                    st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
+                    col_edit, col_del = st.columns(2)
                     with col_edit:
-                        if st.button("✏️", key=f"edit_b_{b}", help="Edytuj budowę", use_container_width=True):
+                        if st.button("✏️ Edytuj", key=f"edit_b_{b}", use_container_width=True):
                             st.session_state.edytowana_budowa = b
                             st.rerun()
-
                     with col_del:
-                        if st.button("🗑️", key=f"del_b_{b}", help="Usuń budowę", use_container_width=True):
+                        if st.button("🗑️ Usuń", key=f"del_{b}", use_container_width=True):
                             usun_budowe(b)
                             st.success(f"Usunięto budowę: {b}")
                             st.rerun()
@@ -837,6 +822,9 @@ if rola_uzytkownika == "Admin":
 else:
     # --- PANEL DLA ZWYKŁEGO PRACOWNIKA ---
     st.subheader(f"Witaj, {zalogowany_pracownik}!")
+
+    stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
+    st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
 
     if not lista_budow:
         st.error(
@@ -942,7 +930,10 @@ else:
                             [AktualneDane, pd.DataFrame([nowy_wpis])], ignore_index=True
                         )
                         zapisz_dane(AktualneDane)
-                        st.success("✅ Zapisano pomyślnie!")
+                        st.success(
+                            f"✅ Zapisano pomyślnie! (Rozliczono wg stawki z dnia"
+                            f" {data}: {aktualna_stawka} zł/h)"
+                        )
 
     # --- WIDOK WŁASNYCH WPISÓW PRACOWNIKA ---
     st.markdown("---")
@@ -954,24 +945,16 @@ else:
 
         if not moje_dane.empty:
             mc1, mc2 = st.columns(2)
-            mc1.metric("Twoje godziny pracy", f"{moje_dane['Godziny'].sum():.2f} h")
+            mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
+            mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
             
-            suma_dojazdow = moje_dane['Czas dojazdu (godz)'].sum() + moje_dane['Czas powrotu (godz)'].sum()
-            mc2.metric("Twoje godziny dojazdu", f"{suma_dojazdow:.2f} h")
+            mc3, mc4 = st.columns(2)
+            mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł")
+            mc4.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
             
             st.markdown("---")
 
-            kolumny_do_ukrycia = [
-                "Pracownik", 
-                "Stawka (zł/h)", 
-                "Koszt pracy (zł)", 
-                "Koszt dojazdu (zł)", 
-                "Koszt powrotu (zł)", 
-                "Razem (zł)"
-            ]
-            
-            moje_dane_ekran = moje_dane.drop(columns=[col for col in kolumny_do_ukrycia if col in moje_dane.columns])
-            st.dataframe(moje_dane_ekran, use_container_width=True)
+            st.dataframe(moje_dane, use_container_width=True)
 
 
             def convert_df_to_excel(df):
@@ -983,7 +966,7 @@ else:
                 return output.getvalue()
 
 
-            excel_data = convert_df_to_excel(moje_dane_ekran)
+            excel_data = convert_df_to_excel(moje_dane)
             st.download_button(
                 label="📥 Pobierz moje rozliczenie do Excela (.xlsx)",
                 data=excel_data,
