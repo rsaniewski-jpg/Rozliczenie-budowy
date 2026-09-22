@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- WŁASNY STYL CSS Z NAPRAWIONYMI IKONAMI W PRZYCISKACH ---
+# --- WŁASNY STYL CSS ---
 st.markdown(
     """
     <style>
@@ -47,10 +47,10 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* Poprawione przyciski: automatyczna szerokość, ale z zachowaniem widoczności ikon */
+    /* Przyciski */
     div.row-widget.stButton > button {
-        width: auto !important;
-        padding: 0.35rem 0.6rem !important;
+        width: 100% !important;
+        padding: 0.35rem 0.5rem !important;
         font-size: 1rem !important;
     }
 
@@ -639,17 +639,18 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    col_info, col_przyciski = st.columns([9.0, 0.8])
+                    # ZWIĘKSZONA SZEROKOŚĆ KOLUMNY NA PRZYCISKI, ŻEBY IKONY BYŁY WIDOCZNE
+                    col_info, col_przyciski = st.columns([7.0, 3.0])
                     with col_info:
                         st.write(f"👤 **{p_imie}** (`{p_email}`) \n Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
                     with col_przyciski:
                         sub_c1, sub_c2 = st.columns(2)
                         with sub_c1:
-                            if st.button("✏️", key=f"edit_p_{idx}", help="Edytuj"):
+                            if st.button("✏️", key=f"edit_p_{idx}", help="Edytuj", use_container_width=True):
                                 st.session_state.edytowany_pracownik = p_imie
                                 st.rerun()
                         with sub_c2:
-                            if st.button("🗑️", key=f"del_p_{idx}", help="Usuń"):
+                            if st.button("🗑️", key=f"del_p_{idx}", help="Usuń", use_container_width=True):
                                 if p_imie == zalogowany_pracownik:
                                     st.error("Nie możesz usunąć samego siebie!")
                                 else:
@@ -763,17 +764,18 @@ if rola_uzytkownika == "Admin":
         if aktualne_b:
             for b in aktualne_b:
                 with st.container(border=True):
-                    col_info_b, col_przyciski_b = st.columns([9.0, 0.8])
+                    # ZWIĘKSZONA SZEROKOŚĆ KOLUMNY NA PRZYCISKI
+                    col_info_b, col_przyciski_b = st.columns([7.0, 3.0])
                     with col_info_b:
                         st.markdown(f"<b>{b}</b>", unsafe_allow_html=True)
                     with col_przyciski_b:
                         sub_cb1, sub_cb2 = st.columns(2)
                         with sub_cb1:
-                            if st.button("✏️", key=f"edit_b_{b}", help="Edytuj"):
+                            if st.button("✏️", key=f"edit_b_{b}", help="Edytuj", use_container_width=True):
                                 st.session_state.edytowana_budowa = b
                                 st.rerun()
                         with sub_cb2:
-                            if st.button("🗑️", key=f"del_{b}", help="Usuń"):
+                            if st.button("🗑️", key=f"del_{b}", help="Usuń", use_container_width=True):
                                 usun_budowe(b)
                                 st.success(f"Usunięto budowę: {b}")
                                 st.rerun()
