@@ -29,7 +29,7 @@ st.markdown(
         background-color: #0052a3 !important;
         color: white !important;
     }
-    /* Wyraźniejsze wyszarzenie tła kontenerów z budowami */
+    /* Wyraźniejsze wyszarzenie tła kontenerów z budowami / pracownikami */
     [data-testid="stContainer"] {
         background-color: #e9ecef;
         border-radius: 8px;
@@ -50,7 +50,7 @@ st.markdown(
         max-width: 320px !important;
     }
 
-    /* --- RESPSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (smartfony) --- */
+    /* --- RESPANSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH (smartfony) --- */
     @media (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
@@ -529,7 +529,6 @@ if rola_uzytkownika == "Admin":
 
         dane_systemowe = wczytaj_dane()
         if not dane_systemowe.empty:
-            # --- ZMODYFIKOWANY UKŁAD METRYK POD URZĄDZENIA MOBILNE (2 RZĘDY) ---
             mc_a1, mc_a2, mc_a3 = st.columns(3)
             mc_a1.metric("Łączne godziny", f"{dane_systemowe['Godziny'].sum():.2f} h")
             mc_a2.metric("Koszt pracy", f"{dane_systemowe['Koszt pracy (zł)'].sum():.2f} zł")
@@ -643,16 +642,19 @@ if rola_uzytkownika == "Admin":
                 aktualna_s = pobierz_stawke_pracownika(p_imie, None)
 
                 with st.container(border=True):
-                    st.write(f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
-                    col_edit, col_del = st.columns(2)
+                    # Układ w jednej linii: dane pracownika oraz ikony edycji/usuwania
+                    col_info, col_edit, col_del = st.columns([8, 1, 1])
+
+                    with col_info:
+                        st.markdown(f"👤 **{p_imie}** (`{p_email}`) | Rola: `{p_rola}` | Stawka: `{aktualna_s} zł/h`")
 
                     with col_edit:
-                        if st.button("✏️ Edytuj", key=f"edit_p_{idx}", use_container_width=True):
+                        if st.button("✏️", key=f"edit_p_{idx}", help="Edytuj pracownika", use_container_width=True):
                             st.session_state.edytowany_pracownik = p_imie
                             st.rerun()
 
                     with col_del:
-                        if st.button("🗑️ Usuń", key=f"del_p_{idx}", use_container_width=True):
+                        if st.button("🗑️", key=f"del_p_{idx}", help="Usuń pracownika", use_container_width=True):
                             if p_imie == zalogowany_pracownik:
                                 st.error("Nie możesz usunąć samego siebie!")
                             else:
@@ -938,7 +940,6 @@ else:
         moje_dane = AktualneDane[AktualneDane["Pracownik"] == zalogowany_pracownik]
 
         if not moje_dane.empty:
-            # --- ZMODYFIKOWANY UKŁAD METRYK DLA PRACOWNIKA ---
             mc1, mc2 = st.columns(2)
             mc1.metric("Twoje godziny pracy", f"{moje_dane['Godziny'].sum():.2f} h")
             
@@ -947,7 +948,6 @@ else:
             
             st.markdown("---")
 
-            # Definicja kolumn ukrywanych zarówno na ekranie, jak i w pliku Excel dla pracownika
             kolumny_do_ukrycia = [
                 "Pracownik", 
                 "Stawka (zł/h)", 
@@ -970,7 +970,6 @@ else:
                 return output.getvalue()
 
 
-            # Do pliku Excel przekazujemy oczyszczone dane (bez stawek i kosztów)
             excel_data = convert_df_to_excel(moje_dane_ekran)
             st.download_button(
                 label="📥 Pobierz moje rozliczenie do Excela (.xlsx)",
