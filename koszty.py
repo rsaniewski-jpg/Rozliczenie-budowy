@@ -1006,41 +1006,54 @@ else:
             " budowy."
         )
     else:
-        with st.form("form_pracy", clear_on_submit=True):
-            st.subheader("Dodaj wpis czasu pracy")
+        if "chk_dojazd" not in st.session_state:
+            st.session_state.chk_dojazd = False
+        if "chk_powrot" not in st.session_state:
+            st.session_state.chk_powrot = False
 
-            data = st.date_input("Data")
-            budowa = st.selectbox("Wybierz budowę", lista_budow)
+        st.subheader("Dodaj wpis czasu pracy")
+        
+        data = st.date_input("Data", value=pd.Timestamp.today().date())
+        budowa = st.selectbox("Wybierz budowę", lista_budow)
 
-            st.markdown("⏱️ **Czas pracy na budowie** (obowiązkowy)")
-            col1, col2 = st.columns(2)
-            with col1:
-                godzina_od = st.time_input("Godzina od")
-            with col2:
-                godzina_do = st.time_input("Godzina do")
+        st.markdown("⏱️ **Czas pracy na budowie** (obowiązkowy)")
+        col1, col2 = st.columns(2)
+        with col1:
+            godzina_od = st.time_input("Godzina od", value=pd.to_datetime("08:00").time())
+        with col2:
+            godzina_do = st.time_input("Godzina do", value=pd.to_datetime("16:00").time())
 
-            czy_dojazd = st.checkbox("🚗 Zgłoś dojazd firmowym autem", value=False)
-            dojazd_od, dojazd_do = pd.to_datetime("07:00").time(), pd.to_datetime("08:00").time()
-            if czy_dojazd:
-                col_d1, col_d2 = st.columns(2)
-                with col_d1:
-                    dojazd_od = st.time_input("Dojazd od")
-                with col_d2:
-                    dojazd_do = st.time_input("Dojazd do")
+        def zmien_dojazd():
+            st.session_state.chk_dojazd = not st.session_state.chk_dojazd
 
-            czy_powrot = st.checkbox("🏠 Zgłoś powrót firmowym autem", value=False)
-            powrot_od, powrot_do = pd.to_datetime("16:00").time(), pd.to_datetime("17:00").time()
-            if czy_powrot:
-                col_pow1, col_pow2 = st.columns(2)
-                with col_pow1:
-                    powrot_od = st.time_input("Powrót od")
-                with col_pow2:
-                    powrot_do = st.time_input("Powrót do")
+        def zmien_powrot():
+            st.session_state.chk_powrot = not st.session_state.chk_powrot
 
-            auto = "Brak"
-            if czy_dojazd or czy_powrot:
-                auto = st.selectbox("Numer rejestracyjny auta", lista_aut if lista_aut else ["Brak"])
+        czy_dojazd = st.checkbox("🚗 Zgłoś dojazd firmowym autem", value=st.session_state.chk_dojazd, on_change=zmien_dojazd)
+        
+        dojazd_od, dojazd_do = pd.to_datetime("07:00").time(), pd.to_datetime("08:00").time()
+        if czy_dojazd:
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                dojazd_od = st.time_input("Dojazd od", value=pd.to_datetime("07:00").time())
+            with col_d2:
+                dojazd_do = st.time_input("Dojazd do", value=pd.to_datetime("08:00").time())
 
+        czy_powrot = st.checkbox("🏠 Zgłoś powrót firmowym autem", value=st.session_state.chk_powrot, on_change=zmien_powrot)
+        
+        powrot_od, powrot_do = pd.to_datetime("16:00").time(), pd.to_datetime("17:00").time()
+        if czy_powrot:
+            col_pow1, col_pow2 = st.columns(2)
+            with col_pow1:
+                powrot_od = st.time_input("Powrót od", value=pd.to_datetime("16:00").time())
+            with col_pow2:
+                powrot_do = st.time_input("Powrót do", value=pd.to_datetime("17:00").time())
+
+        auto = "Brak"
+        if czy_dojazd or czy_powrot:
+            auto = st.selectbox("Numer rejestracyjny auta", lista_aut if lista_aut else ["Brak"])
+
+        with st.form("form_pracy_final"):
             submit = st.form_submit_button("Dodaj wpis", use_container_width=True)
 
             if submit:
@@ -1075,22 +1088,15 @@ else:
                     )
 
                     if konflikt_pracownika:
-                        st.error(
-                            "❌ Błąd: Wybrane godziny kolidują z innym Twoim wpisem w tym dniu!"
-                        )
+                        st.error("❌ Błąd: Wybrane godziny kolidują z innym Twoim wpisem w tym dniu!")
                     elif konflikt_auta:
-                        st.error(
-                            f"❌ Błąd: Pojazd (**{auto}**) jest już używany przez innego pracownika "
-                            f"lub w innym wpisie w tym przedziale czasowym!"
-                        )
+                        st.error(f"❌ Błąd: Pojazd (**{auto}**) jest już używany przez innego pracownika lub w innym wpisie w tym przedziale czasowym!")
                     else:
                         roznica_czasu = (koniec_dt - start_dt).total_seconds() / 3600
                         roznica_dojazdu = (dojazd_koniec_dt - dojazd_start_dt).total_seconds() / 3600 if czy_dojazd else 0.0
                         roznica_powrotu = (powrot_koniec_dt - powrot_start_dt).total_seconds() / 3600 if czy_powrot else 0.0
 
-                        aktualna_stawka = pobierz_stawke_pracownika(
-                            zalogowany_pracownik, str(data)
-                        )
+                        aktualna_stawka = pobierz_stawke_pracownika(zalogowany_pracownik, str(data))
 
                         koszt_pracy = roznica_czasu * aktualna_stawka
                         stawka_dojazdu = aktualna_stawka / 2.0
@@ -1119,14 +1125,9 @@ else:
                             "Razem (zł)": round(razem, 2),
                         }
 
-                        AktualneDane = pd.concat(
-                            [AktualneDane, pd.DataFrame([nowy_wpis])], ignore_index=True
-                        )
+                        AktualneDane = pd.concat([AktualneDane, pd.DataFrame([nowy_wpis])], ignore_index=True)
                         zapisz_dane(AktualneDane)
-                        st.success(
-                            f"✅ Zapisano pomyślnie! (Rozliczono wg stawki z dnia"
-                            f" {data}: {aktualna_stawka} zł/h)"
-                        )
+                        st.success(f"✅ Zapisano pomyślnie! (Rozliczono wg stawki z dnia {data}: {aktualna_stawka} zł/h)")
 
     # --- WIDOK WŁASNYCH WPISÓW PRACOWNIKA ---
     st.markdown("---")
