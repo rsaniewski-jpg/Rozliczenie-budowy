@@ -291,13 +291,65 @@ def zapisz_dane(df):
     df.to_csv(PLIK_BAZY, index=False)
 
 
-# --- FUNKCJA SPRAWDZAJĄCA KONFLIKTY CZASOWE ---
+# --- FUNKCJE SPRAWDZAJĄCE KONFLIKTY CZASOWE ---
 def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_od_dt, p_do_dt, pow_od_dt, pow_do_dt):
     if df_dane.empty:
         return False
 
     istniejace = df_dane[
         (df_dane["Pracownik"] == pracownik) & (df_dane["Data"] == data_str)
+    ]
+
+    if istniejace.empty:
+        return False
+
+    def przedzialy_sie_nakladaja(s1, e1, s2, e2):
+        if s1 == e1 or s2 == e2:
+            return False
+        return max(s1, s2) < min(e1, e2)
+
+    for _, row in istniejace.iterrows():
+        i_d_od = pd.to_datetime(f"{data_str} {row['Dojazd Od']}")
+        i_d_do = pd.to_datetime(f"{data_str} {row['Dojazd Do']}")
+        i_p_od = pd.to_datetime(f"{data_str} {row['Od']}")
+        i_p_do = pd.to_datetime(f"{data_str} {row['Do']}")
+        
+        pow_od_val = row.get("Powrót Od", "00:00")
+        pow_do_val = row.get("Powrót Do", "00:00")
+        if pd.isna(pow_od_val) or pow_od_val == "":
+            pow_od_val = "00:00"
+        if pd.isna(pow_do_val) or pow_do_val == "":
+            pow_do_val = "00:00"
+
+        i_pow_od = pd.to_datetime(f"{data_str} {pow_od_val}")
+        i_pow_do = pd.to_datetime(f"{data_str} {pow_do_val}")
+
+        istniejace_okresy = [
+            (i_d_od, i_d_do),
+            (i_p_od, i_p_do),
+            (i_pow_od, i_pow_do)
+        ]
+
+        nowe_okresy = [
+            (d_od_dt, d_do_dt),
+            (p_od_dt, p_do_dt),
+            (pow_od_dt, pow_do_dt)
+        ]
+
+        for n_s, n_e in nowe_okresy:
+            for i_s, i_e in istniejace_okresy:
+                if przedzialy_sie_nakladaja(n_s, n_e, i_s, i_e):
+                    return True
+
+    return False
+
+
+def sprawdz_konflikt_pojazdu(df_dane, auto, data_str, d_od_dt, d_do_dt, p_od_dt, p_do_dt, pow_od_dt, pow_do_dt):
+    if df_dane.empty or auto == "Brak" or pd.isna(auto):
+        return False
+
+    istniejace = df_dane[
+        (df_dane["Nr Rejestracyjny"] == auto) & (df_dane["Data"] == data_str)
     ]
 
     if istniejace.empty:
@@ -526,16 +578,26 @@ if rola_uzytkownika == "Admin":
                             st.error("Błąd: Godzina zakończenia powrotu musi być późniejsza lub równa rozpoczęciu!")
                         else:
                             AktualneDane = wczytaj_dane()
-                            konflikt = sprawdz_konflikt_czasowy(
+                            konflikt_pracownika = sprawdz_konflikt_czasowy(
                                 AktualneDane, wybrany_pracownik_adm, str(data_adm), 
                                 dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
                                 powrot_start_dt, powrot_koniec_dt
                             )
+                            konflikt_auta = sprawdz_konflikt_pojazdu(
+                                AktualneDane, auto_adm, str(data_adm),
+                                dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
+                                powrot_start_dt, powrot_koniec_dt
+                            )
 
-                            if konflikt:
+                            if konflikt_pracownika:
                                 st.error(
                                     f"❌ Błąd: Wybrane godziny kolidują z innym wpisem "
                                     f"pracownika **{wybrany_pracownik_adm}** w tym dniu!"
+                                )
+                            elif konflikt_auta:
+                                st.error(
+                                    f"❌ Błąd: Pojazd **{auto_adm}** jest już używany w tym czasie "
+                                    f"w innym wpisie lub na innej budowie!"
                                 )
                             else:
                                 roznica_dojazdu = (dojazd_koniec_dt - dojazd_start_dt).total_seconds() / 3600
@@ -979,15 +1041,25 @@ else:
                     st.error("Błąd: Godzina zakończenia powrotu musi być późniejsza lub równa rozpoczęciu!")
                 else:
                     AktualneDane = wczytaj_dane()
-                    konflikt = sprawdz_konflikt_czasowy(
+                    konflikt_pracownika = sprawdz_konflikt_czasowy(
                         AktualneDane, zalogowany_pracownik, str(data),
                         dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
                         powrot_start_dt, powrot_koniec_dt
                     )
+                    konflikt_auta = sprawdz_konflikt_pojazdu(
+                        AktualneDane, auto, str(data),
+                        dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
+                        powrot_start_dt, powrot_koniec_dt
+                    )
 
-                    if konflikt:
+                    if konflikt_pracownika:
                         st.error(
                             "❌ Błąd: Wybrane godziny kolidują z innym Twoim wpisem w tym dniu!"
+                        )
+                    elif konflikt_auta:
+                        st.error(
+                            f"❌ Błąd: Wybrany pojazd (**{auto}**) jest już używany w tym czasie "
+                            f"w innym wpisie lub na innej budowie!"
                         )
                     else:
                         roznica_dojazdu = (
@@ -1049,7 +1121,7 @@ else:
         if not moje_dane.empty:
             mc1, mc2 = st.columns(2)
             mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
-            mc2.metric("Twój koszt pracy", f"{moje_d_w_koszt := moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
+            mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
             
             mc3, mc4 = st.columns(2)
             mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł")
