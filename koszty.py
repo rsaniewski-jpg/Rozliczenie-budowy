@@ -1,18 +1,20 @@
 import os
+import pathlib
 from PIL import Image
 import pandas as pd
 import streamlit as st
 
-# Ścieżka do favicony oraz pełnego logo w folderze "loga"
-sciezka_favicony = os.path.join("loga", "logo.png")
-sciezka_pelne_logo = os.path.join("loga", "logo_pelne.png")
+# Ustalamy folder, w którym znajduje się ten plik skryptu
+KATALOG_SKRYPTU = pathlib.Path(__file__).parent
+
+sciezka_favicony = os.path.join(KATALOG_SKRYPTU, "loga", "logo.png")
+sciezka_pelne_logo = os.path.join(KATALOG_SKRYPTU, "loga", "logo_pelne.png")
 
 if os.path.exists(sciezka_favicony):
     ikonka = Image.open(sciezka_favicony)
 else:
     ikonka = "🏗️"
 
-# --- DOMYŚLNIE ZWINIĘTE MENU NA START ---
 st.set_page_config(
     page_title="Rozliczanie Kosztów Budowy", 
     page_icon=ikonka, 
@@ -47,14 +49,36 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* Zmniejszone przyciski (bardziej zgrabne i kompaktowe) */
+    /* Odstępy dla nagłówków */
+    h2, h3 {
+        margin-top: 0.1rem !important;
+        margin-bottom: -0.5rem !important;
+    }
+    
+    /* Domyślna linia (hr) na całą szerokość (100%) */
+    hr {
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    /* Linie znajdujące się bezpośrednio po nagłówkach h2/h3 mają 75% szerokości od lewej */
+    h2 + hr, h3 + hr {
+        width: 75% !important;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+        margin-top: 0.2rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+
     div.row-widget.stButton > button {
         width: 100% !important;
         padding: 0.2rem 0.4rem !important;
         font-size: 0.85rem !important;
     }
 
-    /* --- RESPONSYWNOŚĆ DLA URZĄDZEŃ MOBILNYCH --- */
     @media (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
@@ -70,15 +94,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Pliki do trwałego przechowywania danych
-PLIK_BAZY = "baza_danych.csv"
-PLIK_PRACOWNICY = "baza_pracownikow.csv"
-PLIK_STAWKI = "baza_stawek.csv"
-PLIK_BUDOWY = "baza_budow.csv"
-PLIK_AUTA = "baza_aut.csv"
+PLIK_BAZY = os.path.join(KATALOG_SKRYPTU, "baza_danych.csv")
+PLIK_PRACOWNICY = os.path.join(KATALOG_SKRYPTU, "baza_pracownikow.csv")
+PLIK_STAWKI = os.path.join(KATALOG_SKRYPTU, "baza_stawek.csv")
+PLIK_BUDOWY = os.path.join(KATALOG_SKRYPTU, "baza_budow.csv")
+PLIK_AUTA = os.path.join(KATALOG_SKRYPTU, "baza_aut.csv")
 
 
-# --- FUNKCJE POMOCNICZE DLA BAZ ---
 def wczytaj_pracownikow():
     if os.path.exists(PLIK_PRACOWNICY):
         df = pd.read_csv(PLIK_PRACOWNICY, dtype=str)
@@ -256,7 +278,8 @@ def wczytaj_dane():
             "Powrót Do": "00:00",
             "Czas powrotu (godz)": 0.0,
             "Koszt powrotu (zł)": 0.0,
-            "Nr Rejestracyjny": "Brak"
+            "Nr Rejestracyjny": "Brak",
+            "Nr Rejestracyjny Powrót": "Brak"
         }
         for kol, domyslna_wartosc in kolumny_wymagane.items():
             if kol not in df.columns:
@@ -281,6 +304,7 @@ def wczytaj_dane():
                 "Powrót Od",
                 "Powrót Do",
                 "Czas powrotu (godz)",
+                "Nr Rejestracyjny Powrót",
                 "Koszt powrotu (zł)",
                 "Razem (zł)",
             ]
@@ -291,7 +315,6 @@ def zapisz_dane(df):
     df.to_csv(PLIK_BAZY, index=False)
 
 
-# --- FUNKCJE SPRAWDZAJĄCE KONFLIKTY CZASOWE ---
 def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_od_dt, p_do_dt, pow_od_dt, pow_do_dt, czy_dojazd, czy_powrot):
     if df_dane.empty:
         return False
@@ -316,10 +339,8 @@ def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_o
         
         pow_od_val = row.get("Powrót Od", "00:00")
         pow_do_val = row.get("Powrót Do", "00:00")
-        if pd.isna(pow_od_val) or pow_od_val == "":
-            pow_od_val = "00:00"
-        if pd.isna(pow_do_val) or pow_do_val == "":
-            pow_do_val = "00:00"
+        if pd.isna(pow_od_val) or pow_od_val == "": pow_od_val = "00:00"
+        if pd.isna(pow_do_val) or pow_do_val == "": pow_do_val = "00:00"
 
         i_pow_od = pd.to_datetime(f"{data_str} {pow_od_val}")
         i_pow_do = pd.to_datetime(f"{data_str} {pow_do_val}")
@@ -344,15 +365,8 @@ def sprawdz_konflikt_czasowy(df_dane, pracownik, data_str, d_od_dt, d_do_dt, p_o
     return False
 
 
-def sprawdz_konflikt_pojazdu(df_dane, auto, data_str, d_od_dt, d_do_dt, p_od_dt, p_do_dt, pow_od_dt, pow_do_dt, czy_dojazd, czy_powrot):
-    if df_dane.empty or auto == "Brak" or pd.isna(auto):
-        return False
-
-    istniejace = df_dane[
-        (df_dane["Nr Rejestracyjny"] == auto) & (df_dane["Data"] == data_str)
-    ]
-
-    if istniejace.empty:
+def sprawdz_konflikt_pojazdu_dojazd(df_dane, auto, data_str, d_od_dt, d_do_dt, czy_dojazd):
+    if df_dane.empty or not czy_dojazd or auto == "Brak" or pd.isna(auto):
         return False
 
     def przedzialy_sie_nakladaja(s1, e1, s2, e2):
@@ -360,43 +374,59 @@ def sprawdz_konflikt_pojazdu(df_dane, auto, data_str, d_od_dt, d_do_dt, p_od_dt,
             return False
         return max(s1, s2) < min(e1, e2)
 
-    for _, row in istniejace.iterrows():
-        i_d_od = pd.to_datetime(f"{data_str} {row['Dojazd Od']}")
-        i_d_do = pd.to_datetime(f"{data_str} {row['Dojazd Do']}")
-        i_p_od = pd.to_datetime(f"{data_str} {row['Od']}")
-        i_p_do = pd.to_datetime(f"{data_str} {row['Do']}")
-        
-        pow_od_val = row.get("Powrót Od", "00:00")
-        pow_do_val = row.get("Powrót Do", "00:00")
-        if pd.isna(pow_od_val) or pow_od_val == "":
-            pow_od_val = "00:00"
-        if pd.isna(pow_do_val) or pow_do_val == "":
-            pow_do_val = "00:00"
+    for _, row in df_dane[df_dane["Data"] == data_str].iterrows():
+        auta_wiersza = [row.get("Nr Rejestracyjny", "Brak"), row.get("Nr Rejestracyjny Powrót", "Brak")]
+        if auto in auta_wiersza:
+            i_d_od = pd.to_datetime(f"{data_str} {row['Dojazd Od']}")
+            i_d_do = pd.to_datetime(f"{data_str} {row['Dojazd Do']}")
+            i_p_od = pd.to_datetime(f"{data_str} {row['Od']}")
+            i_p_do = pd.to_datetime(f"{data_str} {row['Do']}")
+            
+            pow_od_val = row.get("Powrót Od", "00:00")
+            pow_do_val = row.get("Powrót Do", "00:00")
+            if pd.isna(pow_od_val) or pow_od_val == "": pow_od_val = "00:00"
+            if pd.isna(pow_do_val) or pow_do_val == "": pow_do_val = "00:00"
+            i_pow_od = pd.to_datetime(f"{data_str} {pow_od_val}")
+            i_pow_do = pd.to_datetime(f"{data_str} {pow_do_val}")
 
-        i_pow_od = pd.to_datetime(f"{data_str} {pow_od_val}")
-        i_pow_do = pd.to_datetime(f"{data_str} {pow_do_val}")
-
-        istniejace_okresy = [
-            (i_d_od, i_d_do),
-            (i_p_od, i_p_do),
-            (i_pow_od, i_pow_do)
-        ]
-
-        nowe_okresy = []
-        if czy_dojazd:
-            nowe_okresy.append((d_od_dt, d_do_dt))
-        if czy_powrot:
-            nowe_okresy.append((pow_od_dt, pow_do_dt))
-
-        for n_s, n_e in nowe_okresy:
-            for i_s, i_e in istniejace_okresy:
-                if przedzialy_sie_nakladaja(n_s, n_e, i_s, i_e):
-                    return True
-
+            if przedzialy_sie_nakladaja(d_od_dt, d_do_dt, i_d_od, i_d_do) or \
+               przedzialy_sie_nakladaja(d_od_dt, d_do_dt, i_p_od, i_p_do) or \
+               przedzialy_sie_nakladaja(d_od_dt, d_do_dt, i_pow_od, i_pow_do):
+                return True
     return False
 
 
-# --- STAN SESJI ---
+def sprawdz_konflikt_pojazdu_powrot(df_dane, auto, data_str, pow_od_dt, pow_do_dt, czy_powrot):
+    if df_dane.empty or not czy_powrot or auto == "Brak" or pd.isna(auto):
+        return False
+
+    def przedzialy_sie_nakladaja(s1, e1, s2, e2):
+        if s1 == e1 or s2 == e2:
+            return False
+        return max(s1, s2) < min(e1, e2)
+
+    for _, row in df_dane[df_dane["Data"] == data_str].iterrows():
+        auta_wiersza = [row.get("Nr Rejestracyjny", "Brak"), row.get("Nr Rejestracyjny Powrót", "Brak")]
+        if auto in auta_wiersza:
+            i_d_od = pd.to_datetime(f"{data_str} {row['Dojazd Od']}")
+            i_d_do = pd.to_datetime(f"{data_str} {row['Dojazd Do']}")
+            i_p_od = pd.to_datetime(f"{data_str} {row['Od']}")
+            i_p_do = pd.to_datetime(f"{data_str} {row['Do']}")
+            
+            pow_od_val = row.get("Powrót Od", "00:00")
+            pow_do_val = row.get("Powrót Do", "00:00")
+            if pd.isna(pow_od_val) or pow_od_val == "": pow_od_val = "00:00"
+            if pd.isna(pow_do_val) or pow_do_val == "": pow_do_val = "00:00"
+            i_pow_od = pd.to_datetime(f"{data_str} {pow_od_val}")
+            i_pow_do = pd.to_datetime(f"{data_str} {pow_do_val}")
+
+            if przedzialy_sie_nakladaja(pow_od_dt, pow_do_dt, i_d_od, i_d_do) or \
+               przedzialy_sie_nakladaja(pow_od_dt, pow_do_dt, i_p_od, i_p_do) or \
+               przedzialy_sie_nakladaja(pow_od_dt, pow_do_dt, i_pow_od, i_pow_do):
+                return True
+    return False
+
+
 if "zalogowany" not in st.session_state:
     st.session_state.zalogowany = False
     st.session_state.aktualny_pracownik = None
@@ -404,12 +434,10 @@ if "zalogowany" not in st.session_state:
 
 st.title("🏗️ System Rozliczania Czasu Pracy na Budowach")
 
-# --- WYŚWIETLANIE PEŁNEGO LOGO W PANELU BOCZNYM ---
 if os.path.exists(sciezka_pelne_logo):
     st.sidebar.image(sciezka_pelne_logo, use_container_width=True)
     st.sidebar.markdown("---")
 
-# --- PANEL LOGOWANIA / UŻYTKOWNIKA ---
 if not st.session_state.zalogowany:
     st.sidebar.header("🔐 Logowanie")
     
@@ -466,54 +494,22 @@ if rola_uzytkownika == "Admin":
     col_btn1, col_btn2, col_btn3, col_btn4 = st.columns(4)
 
     with col_btn1:
-        if st.button(
-            "📊 Raport",
-            use_container_width=True,
-            type=(
-                "primary"
-                if st.session_state.menu_admin == "📊 Raport wszystkich wpisów"
-                else "secondary"
-            ),
-        ):
+        if st.button("📊 Raport", use_container_width=True, type="primary" if st.session_state.menu_admin == "📊 Raport wszystkich wpisów" else "secondary"):
             st.session_state.menu_admin = "📊 Raport wszystkich wpisów"
             st.rerun()
 
     with col_btn2:
-        if st.button(
-            "👥 Pracownicy",
-            use_container_width=True,
-            type=(
-                "primary"
-                if st.session_state.menu_admin == "👥 Zarządzanie Pracownikami"
-                else "secondary"
-            ),
-        ):
+        if st.button("👥 Pracownicy", use_container_width=True, type="primary" if st.session_state.menu_admin == "👥 Zarządzanie Pracownikami" else "secondary"):
             st.session_state.menu_admin = "👥 Zarządzanie Pracownikami"
             st.rerun()
 
     with col_btn3:
-        if st.button(
-            "🏗️ Budowy",
-            use_container_width=True,
-            type=(
-                "primary"
-                if st.session_state.menu_admin == "🏗️ Zarządzanie Budowami"
-                else "secondary"
-            ),
-        ):
+        if st.button("🏗️ Budowy", use_container_width=True, type="primary" if st.session_state.menu_admin == "🏗️ Zarządzanie Budowami" else "secondary"):
             st.session_state.menu_admin = "🏗️ Zarządzanie Budowami"
             st.rerun()
 
     with col_btn4:
-        if st.button(
-            "🚗 Auta",
-            use_container_width=True,
-            type=(
-                "primary"
-                if st.session_state.menu_admin == "🚗 Zarządzanie Autami"
-                else "secondary"
-            ),
-        ):
+        if st.button("🚗 Auta", use_container_width=True, type="primary" if st.session_state.menu_admin == "🚗 Zarządzanie Autami" else "secondary"):
             st.session_state.menu_admin = "🚗 Zarządzanie Autami"
             st.rerun()
 
@@ -533,123 +529,118 @@ if rola_uzytkownika == "Admin":
             elif not lista_budow:
                 st.error("Brak dostępnych budów w systemie.")
             else:
-                with st.form("form_admin_dopisz_godziny", clear_on_submit=True):
-                    wybrany_pracownik_adm = st.selectbox("Wybierz pracownika", lista_pracownikow_nazwy)
-                    data_adm = st.date_input("Data wpisu", value=pd.Timestamp.today().date())
-                    budowa_adm = st.selectbox("Wybierz budowę", lista_budow)
+                wybrany_pracownik_adm = st.selectbox("Wybierz pracownika", lista_pracownikow_nazwy, key="adm_p_sel")
+                data_adm = st.date_input("Data wpisu", value=pd.Timestamp.today().date(), key="adm_d_date")
+                budowa_adm = st.selectbox("Wybierz budowę", lista_budow, key="adm_b_sel")
 
-                    st.markdown("⏱️ **Czas pracy na budowie** (obowiązkowy)")
-                    col_pa1, col_pa2 = st.columns(2)
-                    with col_pa1:
-                        godzina_od_adm = st.time_input("Godzina od", value=pd.to_datetime("08:00").time())
-                    with col_pa2:
-                        godzina_do_adm = st.time_input("Godzina do", value=pd.to_datetime("16:00").time())
+                st.markdown("⏱️ **Czas pracy na budowie** (obowiązkowy)")
+                col_pa1, col_pa2 = st.columns(2)
+                with col_pa1:
+                    godzina_od_adm = st.time_input("Godzina od", value=pd.to_datetime("08:00").time(), key="adm_t_od")
+                with col_pa2:
+                    godzina_do_adm = st.time_input("Godzina do", value=pd.to_datetime("16:00").time(), key="adm_t_do")
 
-                    czy_dojazd_adm = st.checkbox("🚗 Zgłoś dojazd firmowym autem", value=False)
-                    dojazd_od_adm, dojazd_do_adm = pd.to_datetime("07:00").time(), pd.to_datetime("08:00").time()
-                    if czy_dojazd_adm:
-                        col_da1, col_da2 = st.columns(2)
-                        with col_da1:
-                            dojazd_od_adm = st.time_input("Dojazd od", value=pd.to_datetime("07:00").time())
-                        with col_da2:
-                            dojazd_do_adm = st.time_input("Dojazd do", value=pd.to_datetime("08:00").time())
+                czy_dojazd_adm = st.checkbox("🚗 Zgłoś dojazd firmowym autem", key="adm_chk_dojazd_dyn")
+                dojazd_od_adm, dojazd_do_adm = pd.to_datetime("07:00").time(), pd.to_datetime("08:00").time()
+                auto_dojazd_adm = "Brak"
+                if czy_dojazd_adm:
+                    col_da1, col_da2 = st.columns(2)
+                    with col_da1:
+                        dojazd_od_adm = st.time_input("Dojazd od", value=pd.to_datetime("07:00").time(), key="adm_doj_od")
+                    with col_da2:
+                        dojazd_do_adm = st.time_input("Dojazd do", value=pd.to_datetime("08:00").time(), key="adm_doj_do")
+                    auto_dojazd_adm = st.selectbox("Auto na dojazd", lista_aut if lista_aut else ["Brak"], key="adm_auta_d")
 
-                    czy_powrot_adm = st.checkbox("🏠 Zgłoś powrót firmowym autem", value=False)
-                    powrot_od_adm, powrot_do_adm = pd.to_datetime("16:00").time(), pd.to_datetime("17:00").time()
-                    if czy_powrot_adm:
-                        col_powa1, col_powa2 = st.columns(2)
-                        with col_powa1:
-                            powrot_od_adm = st.time_input("Powrót od", value=pd.to_datetime("16:00").time())
-                        with col_powa2:
-                            powrot_do_adm = st.time_input("Powrót do", value=pd.to_datetime("17:00").time())
+                czy_powrot_adm = st.checkbox("🏠 Zgłoś powrót firmowym autem", key="adm_chk_powrot_dyn")
+                powrot_od_adm, powrot_do_adm = pd.to_datetime("16:00").time(), pd.to_datetime("17:00").time()
+                auto_powrot_adm = "Brak"
+                if czy_powrot_adm:
+                    col_powa1, col_powa2 = st.columns(2)
+                    with col_powa1:
+                        powrot_od_adm = st.time_input("Powrót od", value=pd.to_datetime("16:00").time(), key="adm_pow_od")
+                    with col_powa2:
+                        powrot_do_adm = st.time_input("Powrót do", value=pd.to_datetime("17:00").time(), key="adm_pow_do")
+                    auto_powrot_adm = st.selectbox("Auto na powrót", lista_aut if lista_aut else ["Brak"], key="adm_auta_p")
 
-                    auto_adm = "Brak"
-                    if czy_dojazd_adm or czy_powrot_adm:
-                        auto_adm = st.selectbox("Wybierz numer rejestracyjny auta", lista_aut if lista_aut else ["Brak"])
+                if st.button("💾 Dodaj ten wpis dla pracownika", use_container_width=True, type="primary", key="btn_save_adm"):
+                    start_dt = pd.to_datetime(f"{data_adm} {godzina_od_adm}")
+                    koniec_dt = pd.to_datetime(f"{data_adm} {godzina_do_adm}")
+                    
+                    dojazd_start_dt = pd.to_datetime(f"{data_adm} {dojazd_od_adm}") if czy_dojazd_adm else start_dt
+                    dojazd_koniec_dt = pd.to_datetime(f"{data_adm} {dojazd_do_adm}") if czy_dojazd_adm else start_dt
+                    
+                    powrot_start_dt = pd.to_datetime(f"{data_adm} {powrot_od_adm}") if czy_powrot_adm else koniec_dt
+                    powrot_koniec_dt = pd.to_datetime(f"{data_adm} {powrot_do_adm}") if czy_powrot_adm else koniec_dt
 
-                    submit_adm_wpis = st.form_submit_button("💾 Dodaj ten wpis dla pracownika")
+                    if koniec_dt <= start_dt:
+                        st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
+                    elif czy_dojazd_adm and dojazd_koniec_dt < dojazd_start_dt:
+                        st.error("Błąd: Godzina zakończenia dojazdu musi być późniejsza lub równa rozpoczęciu!")
+                    elif czy_dojazd_adm and auto_dojazd_adm == "Brak":
+                        st.error("Błąd: Wybierz auto na dojazd!")
+                    elif czy_powrot_adm and powrot_koniec_dt < powrot_start_dt:
+                        st.error("Błąd: Godzina zakończenia powrotu musi być późniejsza lub równa rozpoczęciu!")
+                    elif czy_powrot_adm and auto_powrot_adm == "Brak":
+                        st.error("Błąd: Wybierz auto na powrót!")
+                    else:
+                        AktualneDane = wczytaj_dane()
+                        konflikt_pracownika = sprawdz_konflikt_czasowy(
+                            AktualneDane, wybrany_pracownik_adm, str(data_adm), 
+                            dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
+                            powrot_start_dt, powrot_koniec_dt, czy_dojazd_adm, czy_powrot_adm
+                        )
+                        konflikt_auta_d = sprawdz_konflikt_pojazdu_dojazd(
+                            AktualneDane, auto_dojazd_adm, str(data_adm), dojazd_start_dt, dojazd_koniec_dt, czy_dojazd_adm
+                        )
+                        konflikt_auta_p = sprawdz_konflikt_pojazdu_powrot(
+                            AktualneDane, auto_powrot_adm, str(data_adm), powrot_start_dt, powrot_koniec_dt, czy_powrot_adm
+                        )
 
-                    if submit_adm_wpis:
-                        start_dt = pd.to_datetime(f"{data_adm} {godzina_od_adm}")
-                        koniec_dt = pd.to_datetime(f"{data_adm} {godzina_do_adm}")
-                        
-                        dojazd_start_dt = pd.to_datetime(f"{data_adm} {dojazd_od_adm}") if czy_dojazd_adm else start_dt
-                        dojazd_koniec_dt = pd.to_datetime(f"{data_adm} {dojazd_do_adm}") if czy_dojazd_adm else start_dt
-                        
-                        powrot_start_dt = pd.to_datetime(f"{data_adm} {powrot_od_adm}") if czy_powrot_adm else koniec_dt
-                        powrot_koniec_dt = pd.to_datetime(f"{data_adm} {powrot_do_adm}") if czy_powrot_adm else koniec_dt
-
-                        if koniec_dt <= start_dt:
-                            st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
-                        elif czy_dojazd_adm and dojazd_koniec_dt < dojazd_start_dt:
-                            st.error("Błąd: Godzina zakończenia dojazdu musi być późniejsza lub równa rozpoczęciu!")
-                        elif czy_powrot_adm and powrot_koniec_dt < powrot_start_dt:
-                            st.error("Błąd: Godzina zakończenia powrotu musi być późniejsza lub równa rozpoczęciu!")
-                        elif (czy_dojazd_adm or czy_powrot_adm) and auto_adm == "Brak":
-                            st.error("Błąd: Jeśli zgłaszasz dojazd lub powrót, musisz wybrać numer rejestracyjny auta!")
+                        if konflikt_pracownika:
+                            st.error(f"❌ Wybrane godziny kolidują z innym wpisem pracownika w tym dniu!")
+                        elif konflikt_auta_d:
+                            st.error(f"❌ Pojazd dojazdu ({auto_dojazd_adm}) jest zajęty w tym przedziale czasowym!")
+                        elif konflikt_auta_p:
+                            st.error(f"❌ Pojazd powrotu ({auto_powrot_adm}) jest zajęty w tym przedziale czasowym!")
                         else:
-                            AktualneDane = wczytaj_dane()
-                            konflikt_pracownika = sprawdz_konflikt_czasowy(
-                                AktualneDane, wybrany_pracownik_adm, str(data_adm), 
-                                dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
-                                powrot_start_dt, powrot_koniec_dt, czy_dojazd_adm, czy_powrot_adm
-                            )
-                            konflikt_auta = sprawdz_konflikt_pojazdu(
-                                AktualneDane, auto_adm, str(data_adm),
-                                dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
-                                powrot_start_dt, powrot_koniec_dt, czy_dojazd_adm, czy_powrot_adm
-                            )
+                            roznica_czasu = (koniec_dt - start_dt).total_seconds() / 3600
+                            roznica_dojazdu = (dojazd_koniec_dt - dojazd_start_dt).total_seconds() / 3600 if czy_dojazd_adm else 0.0
+                            roznica_powrotu = (powrot_koniec_dt - powrot_start_dt).total_seconds() / 3600 if czy_powrot_adm else 0.0
 
-                            if konflikt_pracownika:
-                                st.error(
-                                    f"❌ Błąd: Wybrane godziny kolidują z innym wpisem "
-                                    f"pracownika **{wybrany_pracownik_adm}** w tym dniu!"
-                                )
-                            elif konflikt_auta:
-                                st.error(
-                                    f"❌ Błąd: Pojazd **{auto_adm}** jest już używany przez innego pracownika "
-                                    f"lub w innym wpisie w tym przedziale czasowym!"
-                                )
-                            else:
-                                roznica_czasu = (koniec_dt - start_dt).total_seconds() / 3600
-                                roznica_dojazdu = (dojazd_koniec_dt - dojazd_start_dt).total_seconds() / 3600 if czy_dojazd_adm else 0.0
-                                roznica_powrotu = (powrot_koniec_dt - powrot_start_dt).total_seconds() / 3600 if czy_powrot_adm else 0.0
+                            stawka_wybranego = pobierz_stawke_pracownika(wybrany_pracownik_adm, str(data_adm))
 
-                                stawka_wybranego = pobierz_stawke_pracownika(wybrany_pracownik_adm, str(data_adm))
+                            koszt_pracy = roznica_czasu * stawka_wybranego
+                            stawka_dojazdu = stawka_wybranego / 2.0
+                            koszt_dojazdu_zl = roznica_dojazdu * stawka_dojazdu if czy_dojazd_adm else 0.0
+                            koszt_powrotu_zl = roznica_powrotu * stawka_dojazdu if czy_powrot_adm else 0.0
+                            razem = koszt_pracy + koszt_dojazdu_zl + koszt_powrotu_zl
 
-                                koszt_pracy = roznica_czasu * stawka_wybranego
-                                stawka_dojazdu = stawka_wybranego / 2.0
-                                koszt_dojazdu_zl = roznica_dojazdu * stawka_dojazdu if czy_dojazd_adm else 0.0
-                                koszt_powrotu_zl = roznica_powrotu * stawka_dojazdu if czy_powrot_adm else 0.0
-                                razem = koszt_pracy + koszt_dojazdu_zl + koszt_powrotu_zl
+                            nowy_wpis_adm = {
+                                "Pracownik": wybrany_pracownik_adm,
+                                "Data": str(data_adm),
+                                "Budowa": budowa_adm,
+                                "Nr Rejestracyjny": auto_dojazd_adm if czy_dojazd_adm else "Brak",
+                                "Dojazd Od": str(dojazd_od_adm) if czy_dojazd_adm else "00:00",
+                                "Dojazd Do": str(dojazd_do_adm) if czy_dojazd_adm else "00:00",
+                                "Czas dojazdu (godz)": round(roznica_dojazdu, 2),
+                                "Od": str(godzina_od_adm),
+                                "Do": str(godzina_do_adm),
+                                "Stawka (zł/h)": stawka_wybranego,
+                                "Godziny": round(roznica_czasu, 2),
+                                "Koszt pracy (zł)": round(koszt_pracy, 2),
+                                "Koszt dojazdu (zł)": round(koszt_dojazdu_zl, 2),
+                                "Powrót Od": str(powrot_od_adm) if czy_powrot_adm else "00:00",
+                                "Powrót Do": str(powrot_do_adm) if czy_powrot_adm else "00:00",
+                                "Czas powrotu (godz)": round(roznica_powrotu, 2),
+                                "Nr Rejestracyjny Powrót": auto_powrot_adm if czy_powrot_adm else "Brak",
+                                "Koszt powrotu (zł)": round(koszt_powrotu_zl, 2),
+                                "Razem (zł)": round(razem, 2),
+                            }
 
-                                nowy_wpis_adm = {
-                                    "Pracownik": wybrany_pracownik_adm,
-                                    "Data": str(data_adm),
-                                    "Budowa": budowa_adm,
-                                    "Nr Rejestracyjny": auto_adm,
-                                    "Dojazd Od": str(dojazd_od_adm) if czy_dojazd_adm else "00:00",
-                                    "Dojazd Do": str(dojazd_do_adm) if czy_dojazd_adm else "00:00",
-                                    "Czas dojazdu (godz)": round(roznica_dojazdu, 2),
-                                    "Od": str(godzina_od_adm),
-                                    "Do": str(godzina_do_adm),
-                                    "Stawka (zł/h)": stawka_wybranego,
-                                    "Godziny": round(roznica_czasu, 2),
-                                    "Koszt pracy (zł)": round(koszt_pracy, 2),
-                                    "Koszt dojazdu (zł)": round(koszt_dojazdu_zl, 2),
-                                    "Powrót Od": str(powrot_od_adm) if czy_powrot_adm else "00:00",
-                                    "Powrót Do": str(powrot_do_adm) if czy_powrot_adm else "00:00",
-                                    "Czas powrotu (godz)": round(roznica_powrotu, 2),
-                                    "Koszt powrotu (zł)": round(koszt_powrotu_zl, 2),
-                                    "Razem (zł)": round(razem, 2),
-                                }
-
-                                AktualneDane = pd.concat([AktualneDane, pd.DataFrame([nowy_wpis_adm])], ignore_index=True)
-                                zapisz_dane(AktualneDane)
-                                st.success(
-                                    f"✅ Pomyślnie dopisano godziny dla pracownika: **{wybrany_pracownik_adm}**"
-                                )
-                                st.rerun()
+                            AktualneDane = pd.concat([AktualneDane, pd.DataFrame([nowy_wpis_adm])], ignore_index=True)
+                            zapisz_dane(AktualneDane)
+                            st.success(f"✅ Pomyślnie dopisano godziny dla pracownika: **{wybrany_pracownik_adm}**")
+                            st.rerun()
 
         st.markdown("---")
 
@@ -665,7 +656,6 @@ if rola_uzytkownika == "Admin":
             mc_a5.metric("Łączny koszt", f"{dane_systemowe['Razem (zł)'].sum():.2f} zł")
             
             st.markdown("---")
-
             st.dataframe(dane_systemowe, use_container_width=True)
 
             from io import BytesIO
@@ -674,7 +664,6 @@ if rola_uzytkownika == "Admin":
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine="openpyxl") as writer:
                     df.to_excel(writer, index=False, sheet_name="Wszystkie_Wpisy")
-                    
                     if not df.empty and "Budowa" in df.columns and "Pracownik" in df.columns:
                         tabela_kosztow = df.pivot_table(
                             values="Koszt pracy (zł)", 
@@ -684,20 +673,9 @@ if rola_uzytkownika == "Admin":
                             fill_value=0.0
                         )
                         tabela_kosztow.to_excel(writer, sheet_name="Podsumowanie_Kosztow")
-
-                        tabela_godzin = df.pivot_table(
-                            values="Godziny", 
-                            index="Budowa", 
-                            columns="Pracownik", 
-                            aggfunc="sum", 
-                            fill_value=0.0
-                        )
-                        tabela_godzin.to_excel(writer, sheet_name="Podsumowanie_Godzin")
-
                 return output.getvalue()
 
             excel_data = convert_df_to_excel_z_tabela(dane_systemowe)
-            
             st.download_button(
                 label="📥 Pobierz zaawansowany raport Excel (.xlsx)",
                 data=excel_data,
@@ -719,12 +697,8 @@ if rola_uzytkownika == "Admin":
                 nowe_haslo = st.text_input("Hasło do logowania", type="password")
             with c_n2:
                 wybrana_rola = st.selectbox("Uprawnienia", ["Pracownik", "Admin"])
-                poczatkowa_stawka = st.number_input(
-                    "Stawka początkowa (zł/h)", min_value=0.0, value=30.0, step=5.0
-                )
-                data_od_stawki = st.date_input(
-                    "Obowiązuje od daty", value=pd.Timestamp.today().date()
-                )
+                poczatkowa_stawka = st.number_input("Stawka początkowa (zł/h)", min_value=0.0, value=30.0, step=5.0)
+                data_od_stawki = st.date_input("Obowiązuje od daty", value=pd.Timestamp.today().date())
 
             submit_pracownik = st.form_submit_button("Dodaj pracownika")
 
@@ -742,19 +716,14 @@ if rola_uzytkownika == "Admin":
                             "Rola": [wybrana_rola],
                         }
                     )
-                    df_pracownicy = pd.concat(
-                        [df_pracownicy, nowy_wiersz], ignore_index=True
-                    )
+                    df_pracownicy = pd.concat([df_pracownicy, nowy_wiersz], ignore_index=True)
                     zapisz_pracownikow(df_pracownicy)
-                    dodaj_stawke_dla_pracownika(
-                        nowe_imie, poczatkowa_stawka, data_od_stawki
-                    )
+                    dodaj_stawke_dla_pracownika(nowe_imie, poczatkowa_stawka, data_od_stawki)
                     st.success(f"✅ Pomyślnie dodano pracownika: {nowe_imie}")
                     st.rerun()
 
         st.markdown("---")
         st.markdown("### 📋 Lista pracowników")
-
         df_pracownicy = wczytaj_pracownikow()
 
         if "edytowany_pracownik" not in st.session_state:
@@ -782,9 +751,7 @@ if rola_uzytkownika == "Admin":
                                 if p_imie == zalogowany_pracownik:
                                     st.error("Nie możesz usunąć samego siebie!")
                                 else:
-                                    df_pracownicy = df_pracownicy[
-                                        df_pracownicy["Pracownik"] != p_imie
-                                    ]
+                                    df_pracownicy = df_pracownicy[df_pracownicy["Pracownik"] != p_imie]
                                     zapisz_pracownikow(df_pracownicy)
                                     st.success(f"Usunięto pracownika: {p_imie}")
                                     st.rerun()
@@ -799,59 +766,33 @@ if rola_uzytkownika == "Admin":
                     st.markdown(f"### ✏️ Edycja profilu pracownika: **{cel}**")
 
                     with st.form(f"form_edycja_{cel}"):
-                        nowe_imie_ed = st.text_input(
-                            "Imię i nazwisko", value=akt_wiersz["Pracownik"]
-                        )
-                        nowy_email_ed = st.text_input(
-                            "Adres e-mail", value=akt_wiersz.get("Email", "")
-                        )
-                        nowe_haslo_ed = st.text_input(
-                            "Hasło", value=akt_wiersz.get("Haslo", ""), type="password"
-                        )
+                        nowe_imie_ed = st.text_input("Imię i nazwisko", value=akt_wiersz["Pracownik"])
+                        nowy_email_ed = st.text_input("Adres e-mail", value=akt_wiersz.get("Email", ""))
+                        nowe_haslo_ed = st.text_input("Hasło", value=akt_wiersz.get("Haslo", ""), type="password")
                         idx_r = 0 if str(akt_wiersz["Rola"]) == "Pracownik" else 1
-                        nowa_rola_ed = st.selectbox(
-                            "Uprawnienia", ["Pracownik", "Admin"], index=idx_r
-                        )
+                        nowa_rola_ed = st.selectbox("Uprawnienia", ["Pracownik", "Admin"], index=idx_r)
 
                         st.markdown("---")
                         st.markdown("💰 **Nowa stawka godzinowa**")
                         ostatnia_s = pobierz_stawke_pracownika(cel, None)
-                        nowa_stawka_ed = st.number_input(
-                            "Stawka (zł/h)", min_value=0.0, value=ostatnia_s, step=5.0
-                        )
-                        data_od_nowej = st.date_input(
-                            "Obowiązuje od daty", value=pd.Timestamp.today().date()
-                        )
+                        nowa_stawka_ed = st.number_input("Stawka (zł/h)", min_value=0.0, value=ostatnia_s, step=5.0)
+                        data_od_nowej = st.date_input("Obowiązuje od daty", value=pd.Timestamp.today().date())
 
                         col_zapisz, col_anuluj = st.columns(2)
                         with col_zapisz:
-                            btn_zapisz_zmiany = st.form_submit_button(
-                                "💾 Zapisz zmiany", use_container_width=True
-                            )
+                            btn_zapisz_zmiany = st.form_submit_button("💾 Zapisz zmiany", use_container_width=True)
                         with col_anuluj:
-                            btn_anuluj = st.form_submit_button(
-                                "❌ Anuluj", use_container_width=True
-                            )
+                            btn_anuluj = st.form_submit_button("❌ Anuluj", use_container_width=True)
 
                         if btn_zapisz_zmiany:
-                            df_pracownicy.loc[
-                                df_pracownicy["Pracownik"] == cel, "Pracownik"
-                            ] = nowe_imie_ed
-                            df_pracownicy.loc[
-                                df_pracownicy["Pracownik"] == nowe_imie_ed, "Email"
-                            ] = nowy_email_ed.strip().lower()
-                            df_pracownicy.loc[
-                                df_pracownicy["Pracownik"] == nowe_imie_ed, "Haslo"
-                            ] = nowe_haslo_ed
-                            df_pracownicy.loc[
-                                df_pracownicy["Pracownik"] == nowe_imie_ed, "Rola"
-                            ] = nowa_rola_ed
+                            df_pracownicy.loc[df_pracownicy["Pracownik"] == cel, "Pracownik"] = nowe_imie_ed
+                            df_pracownicy.loc[df_pracownicy["Pracownik"] == nowe_imie_ed, "Email"] = nowy_email_ed.strip().lower()
+                            df_pracownicy.loc[df_pracownicy["Pracownik"] == nowe_imie_ed, "Haslo"] = nowe_haslo_ed
+                            df_pracownicy.loc[df_pracownicy["Pracownik"] == nowe_imie_ed, "Rola"] = nowa_rola_ed
                             zapisz_pracownikow(df_pracownicy)
 
                             if nowa_stawka_ed != ostatnia_s:
-                                dodaj_stawke_dla_pracownika(
-                                    nowe_imie_ed, nowa_stawka_ed, data_od_nowej
-                                )
+                                dodaj_stawke_dla_pracownika(nowe_imie_ed, nowa_stawka_ed, data_od_nowej)
 
                             st.session_state.edytowany_pracownik = None
                             st.success("Zaktualizowano pomyślnie!")
@@ -865,10 +806,7 @@ if rola_uzytkownika == "Admin":
 
     elif menu_admin == "🏗️ Zarządzanie Budowami":
         st.markdown("### Dodaj nową budowę / lokalizację")
-
-        nowa_budowa_input = st.text_input(
-            "Nazwa budowy lub adres", key="input_nowa_budowa"
-        )
+        nowa_budowa_input = st.text_input("Nazwa budowy lub adres", key="input_nowa_budowa")
 
         if st.button("➕ Dodaj budowę do listy", use_container_width=True):
             czysta_nazwa = nowa_budowa_input.strip()
@@ -973,8 +911,62 @@ if rola_uzytkownika == "Admin":
                         st.error("❌ Pojazd o takim numerze rejestracyjnym już istnieje.")
 
         st.markdown("---")
-        st.markdown("### 📋 Lista zarejestrowanych pojazdów")
+        st.markdown("### 📋 Lista zarejestrowanych pojazdów i raporty")
+
         df_pelne_auta = wczytaj_pelne_dane_aut()
+        df_dane_wielkie = wczytaj_dane()
+
+        if not df_pelne_auta.empty:
+            from io import BytesIO
+            
+            def generuj_raport_aut_excel(df_auta, df_wpisy):
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                    summary_rows = []
+                    for _, r_auto in df_auta.iterrows():
+                        nr = r_auto["Nr Rejestracyjny"]
+                        opis = r_auto.get("Opis", "")
+                        
+                        if not df_wpisy.empty:
+                            w_auta = df_wpisy[
+                                (df_wpisy["Nr Rejestracyjny"] == nr) | 
+                                (df_wpisy["Nr Rejestracyjny Powrót"] == nr)
+                            ]
+                            liczba_uzyc = len(w_auta)
+                            c_dojazd = w_auta["Czas dojazdu (godz)"].sum() if "Czas dojazdu (godz)" in w_auta.columns else 0.0
+                            c_powrot = w_auta["Czas powrotu (godz)"].sum() if "Czas powrotu (godz)" in w_auta.columns else 0.0
+                            suma_godzin = c_dojazd + c_powrot
+                        else:
+                            w_auta = pd.DataFrame()
+                            liczba_uzyc = 0
+                            suma_godzin = 0.0
+
+                        summary_rows.append({
+                            "Nr Rejestracyjny": nr,
+                            "Opis / Model": opis,
+                            "Liczba przejazdów": liczba_uzyc,
+                            "Łączny czas tras (h)": round(suma_godzin, 2)
+                        })
+                        
+                        safe_sheet_name = str(nr)[:31]
+                        if not w_auta.empty:
+                            w_auta.to_excel(writer, index=False, sheet_name=safe_sheet_name)
+                        else:
+                            pd.DataFrame({"Informacja": ["Brak przejazdów"]}).to_excel(writer, index=False, sheet_name=safe_sheet_name)
+
+                    df_summary = pd.DataFrame(summary_rows)
+                    df_summary.to_excel(writer, index=False, sheet_name="Podsumowanie_Floty")
+                return output.getvalue()
+
+            excel_auta_data = generuj_raport_aut_excel(df_pelne_auta, df_dane_wielkie)
+            st.download_button(
+                label="📥 Pobierz pełny raport floty (każde auto w osobnym arkuszu)",
+                data=excel_auta_data,
+                file_name="raport_uzycia_aut.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+            st.markdown("---")
 
         if "edytowane_auto" not in st.session_state:
             st.session_state.edytowane_auto = None
@@ -1029,12 +1021,6 @@ if rola_uzytkownika == "Admin":
                             df_pelne_auta.loc[df_pelne_auta["Nr Rejestracyjny"] == czysty_nowy_nr, "Opis"] = nowy_opis.strip()
                             df_pelne_auta.to_csv(PLIK_AUTA, index=False)
 
-                            if czysty_nowy_nr != stara_rejestracja:
-                                df_dane = wczytaj_dane()
-                                if not df_dane.empty and "Nr Rejestracyjny" in df_dane.columns:
-                                    df_dane.loc[df_dane["Nr Rejestracyjny"] == stara_rejestracja, "Nr Rejestracyjny"] = czysty_nowy_nr
-                                    zapisz_dane(df_dane)
-
                             st.session_state.edytowane_auto = None
                             st.success("✅ Zaktualizowano pojazd pomyślnie!")
                             st.rerun()
@@ -1048,21 +1034,11 @@ if rola_uzytkownika == "Admin":
 else:
     # --- PANEL DLA ZWYKŁEGO PRACOWNIKA ---
     st.subheader(f"Witaj, {zalogowany_pracownik}!")
-
-    stawka_pracownika = pobierz_stawke_pracownika(zalogowany_pracownik, None)
-    st.info(f"Twoja aktualna stawka godzinowa: **{stawka_pracownika} zł/h**")
+    st.markdown("---")
 
     if not lista_budow:
-        st.error(
-            "❌ Brak dostępnych budów w systemie. Poproś administratora o dodanie"
-            " budowy."
-        )
+        st.error("❌ Brak dostępnych budów w systemie. Poproś administratora o dodanie budowy.")
     else:
-        if "chk_dojazd" not in st.session_state:
-            st.session_state.chk_dojazd = False
-        if "chk_powrot" not in st.session_state:
-            st.session_state.chk_powrot = False
-
         st.subheader("Dodaj wpis czasu pracy")
         
         data = st.date_input("Data", value=pd.Timestamp.today().date())
@@ -1075,111 +1051,109 @@ else:
         with col2:
             godzina_do = st.time_input("Godzina do", value=pd.to_datetime("16:00").time())
 
-        def zmien_dojazd():
-            st.session_state.chk_dojazd = not st.session_state.chk_dojazd
-
-        def zmien_powrot():
-            st.session_state.chk_powrot = not st.session_state.chk_powrot
-
-        czy_dojazd = st.checkbox("🚗 Zgłoś dojazd firmowym autem", value=st.session_state.chk_dojazd, on_change=zmien_dojazd)
-        
+        # Dynamicznie rozwijana sekcja dojazdu
+        czy_dojazd = st.checkbox("🚗 Zgłoś dojazd firmowym autem")
         dojazd_od, dojazd_do = pd.to_datetime("07:00").time(), pd.to_datetime("08:00").time()
+        auto_dojazd = "Brak"
         if czy_dojazd:
             col_d1, col_d2 = st.columns(2)
             with col_d1:
                 dojazd_od = st.time_input("Dojazd od", value=pd.to_datetime("07:00").time())
             with col_d2:
                 dojazd_do = st.time_input("Dojazd do", value=pd.to_datetime("08:00").time())
+            auto_dojazd = st.selectbox("Numer rejestracyjny auta na dojazd", lista_aut if lista_aut else ["Brak"])
 
-        czy_powrot = st.checkbox("🏠 Zgłoś powrót firmowym autem", value=st.session_state.chk_powrot, on_change=zmien_powrot)
-        
+        # Dynamicznie rozwijana sekcja powrotu
+        czy_powrot = st.checkbox("🏠 Zgłoś powrót firmowym autem")
         powrot_od, powrot_do = pd.to_datetime("16:00").time(), pd.to_datetime("17:00").time()
+        auto_powrot = "Brak"
         if czy_powrot:
             col_pow1, col_pow2 = st.columns(2)
             with col_pow1:
                 powrot_od = st.time_input("Powrót od", value=pd.to_datetime("16:00").time())
             with col_pow2:
                 powrot_do = st.time_input("Powrót do", value=pd.to_datetime("17:00").time())
+            auto_powrot = st.selectbox("Numer rejestracyjny auta na powrót", lista_aut if lista_aut else ["Brak"])
 
-        auto = "Brak"
-        if czy_dojazd or czy_powrot:
-            auto = st.selectbox("Numer rejestracyjny auta", lista_aut if lista_aut else ["Brak"])
+        if st.button("Dodaj wpis", use_container_width=True, type="primary"):
+            start_dt = pd.to_datetime(f"{data} {godzina_od}")
+            koniec_dt = pd.to_datetime(f"{data} {godzina_do}")
 
-        with st.form("form_pracy_final"):
-            submit = st.form_submit_button("Dodaj wpis", use_container_width=True)
+            dojazd_start_dt = pd.to_datetime(f"{data} {dojazd_od}") if czy_dojazd else start_dt
+            dojazd_koniec_dt = pd.to_datetime(f"{data} {dojazd_do}") if czy_dojazd else start_dt
+            
+            powrot_start_dt = pd.to_datetime(f"{data} {powrot_od}") if czy_powrot else koniec_dt
+            powrot_koniec_dt = pd.to_datetime(f"{data} {powrot_do}") if czy_powrot else koniec_dt
 
-            if submit:
-                start_dt = pd.to_datetime(f"{data} {godzina_od}")
-                koniec_dt = pd.to_datetime(f"{data} {godzina_do}")
+            if koniec_dt <= start_dt:
+                st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
+            elif czy_dojazd and dojazd_koniec_dt < dojazd_start_dt:
+                st.error("Błąd: Godzina zakończenia dojazdu musi być późniejsza lub równa rozpoczęciu!")
+            elif czy_dojazd and auto_dojazd == "Brak":
+                st.error("Błąd: Jeśli zgłaszasz dojazd, musisz wybrać numer rejestracyjny auta!")
+            elif czy_powrot and powrot_koniec_dt < powrot_start_dt:
+                st.error("Błąd: Godzina zakończenia powrotu musi być późniejsza lub równa rozpoczęciu!")
+            elif czy_powrot and auto_powrot == "Brak":
+                st.error("Błąd: Jeśli zgłaszasz powrót, musisz wybrać numer rejestracyjny auta!")
+            else:
+                AktualneDane = wczytaj_dane()
+                konflikt_pracownika = sprawdz_konflikt_czasowy(
+                    AktualneDane, zalogowany_pracownik, str(data),
+                    dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
+                    powrot_start_dt, powrot_koniec_dt, czy_dojazd, czy_powrot
+                )
+                konflikt_auta_d = sprawdz_konflikt_pojazdu_dojazd(
+                    AktualneDane, auto_dojazd, str(data), dojazd_start_dt, dojazd_koniec_dt, czy_dojazd
+                )
+                konflikt_auta_p = sprawdz_konflikt_pojazdu_powrot(
+                    AktualneDane, auto_powrot, str(data), powrot_start_dt, powrot_koniec_dt, czy_powrot
+                )
 
-                dojazd_start_dt = pd.to_datetime(f"{data} {dojazd_od}") if czy_dojazd else start_dt
-                dojazd_koniec_dt = pd.to_datetime(f"{data} {dojazd_do}") if czy_dojazd else start_dt
-                
-                powrot_start_dt = pd.to_datetime(f"{data} {powrot_od}") if czy_powrot else koniec_dt
-                powrot_koniec_dt = pd.to_datetime(f"{data} {powrot_do}") if czy_powrot else koniec_dt
-
-                if koniec_dt <= start_dt:
-                    st.error("Błąd: Godzina zakończenia pracy musi być późniejsza niż rozpoczęcia!")
-                elif czy_dojazd and dojazd_koniec_dt < dojazd_start_dt:
-                    st.error("Błąd: Godzina zakończenia dojazdu musi być późniejsza lub równa rozpoczęciu!")
-                elif czy_powrot and powrot_koniec_dt < powrot_start_dt:
-                    st.error("Błąd: Godzina zakończenia powrotu musi być późniejsza lub równa rozpoczęciu!")
-                elif (czy_dojazd or czy_powrot) and auto == "Brak":
-                    st.error("Błąd: Jeśli zgłaszasz dojazd lub powrót, musisz wybrać numer rejestracyjny auta!")
+                if konflikt_pracownika:
+                    st.error("❌ Błąd: Wybrane godziny kolidują z innym Twoim wpisem w tym dniu!")
+                elif konflikt_auta_d:
+                    st.error(f"❌ Błąd: Pojazd dojazdu (**{auto_dojazd}**) jest już zajęty w tym przedziale czasowym!")
+                elif konflikt_auta_p:
+                    st.error(f"❌ Błąd: Pojazd powrotu (**{auto_powrot}**) jest już zajęty w tym przedziale czasowym!")
                 else:
-                    AktualneDane = wczytaj_dane()
-                    konflikt_pracownika = sprawdz_konflikt_czasowy(
-                        AktualneDane, zalogowany_pracownik, str(data),
-                        dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
-                        powrot_start_dt, powrot_koniec_dt, czy_dojazd, czy_powrot
-                    )
-                    konflikt_auta = sprawdz_konflikt_pojazdu(
-                        AktualneDane, auto, str(data),
-                        dojazd_start_dt, dojazd_koniec_dt, start_dt, koniec_dt,
-                        powrot_start_dt, powrot_koniec_dt, czy_dojazd, czy_powrot
-                    )
+                    roznica_czasu = (koniec_dt - start_dt).total_seconds() / 3600
+                    roznica_dojazdu = (dojazd_koniec_dt - dojazd_start_dt).total_seconds() / 3600 if czy_dojazd else 0.0
+                    roznica_powrotu = (powrot_koniec_dt - powrot_start_dt).total_seconds() / 3600 if czy_powrot else 0.0
 
-                    if konflikt_pracownika:
-                        st.error("❌ Błąd: Wybrane godziny kolidują z innym Twoim wpisem w tym dniu!")
-                    elif konflikt_auta:
-                        st.error(f"❌ Błąd: Pojazd (**{auto}**) jest już używany przez innego pracownika lub w innym wpisie w tym przedziale czasowym!")
-                    else:
-                        roznica_czasu = (koniec_dt - start_dt).total_seconds() / 3600
-                        roznica_dojazdu = (dojazd_koniec_dt - dojazd_start_dt).total_seconds() / 3600 if czy_dojazd else 0.0
-                        roznica_powrotu = (powrot_koniec_dt - powrot_start_dt).total_seconds() / 3600 if czy_powrot else 0.0
+                    aktualna_stawka = pobierz_stawke_pracownika(zalogowany_pracownik, str(data))
 
-                        aktualna_stawka = pobierz_stawke_pracownika(zalogowany_pracownik, str(data))
+                    koszt_pracy = roznica_czasu * aktualna_stawka
+                    stawka_dojazdu = aktualna_stawka / 2.0
+                    koszt_dojazdu_zl = roznica_dojazdu * stawka_dojazdu if czy_dojazd else 0.0
+                    koszt_powrotu_zl = roznica_powrotu * stawka_dojazdu if czy_powrot else 0.0
+                    razem = koszt_pracy + koszt_dojazdu_zl + koszt_powrotu_zl
 
-                        koszt_pracy = roznica_czasu * aktualna_stawka
-                        stawka_dojazdu = aktualna_stawka / 2.0
-                        koszt_dojazdu_zl = roznica_dojazdu * stawka_dojazdu if czy_dojazd else 0.0
-                        koszt_powrotu_zl = roznica_powrotu * stawka_dojazdu if czy_powrot else 0.0
-                        razem = koszt_pracy + koszt_dojazdu_zl + koszt_powrotu_zl
+                    nowy_wpis = {
+                        "Pracownik": zalogowany_pracownik,
+                        "Data": str(data),
+                        "Budowa": budowa,
+                        "Nr Rejestracyjny": auto_dojazd if czy_dojazd else "Brak",
+                        "Dojazd Od": str(dojazd_od) if czy_dojazd else "00:00",
+                        "Dojazd Do": str(dojazd_do) if czy_dojazd else "00:00",
+                        "Czas dojazdu (godz)": round(roznica_dojazdu, 2),
+                        "Od": str(godzina_od),
+                        "Do": str(godzina_do),
+                        "Stawka (zł/h)": aktualna_stawka,
+                        "Godziny": round(roznica_czasu, 2),
+                        "Koszt pracy (zł)": round(koszt_pracy, 2),
+                        "Koszt dojazdu (zł)": round(koszt_dojazdu_zl, 2),
+                        "Powrót Od": str(powrot_od) if czy_powrot else "00:00",
+                        "Powrót Do": str(powrot_do) if czy_powrot else "00:00",
+                        "Czas powrotu (godz)": round(roznica_powrotu, 2),
+                        "Nr Rejestracyjny Powrót": auto_powrot if czy_powrot else "Brak",
+                        "Koszt powrotu (zł)": round(koszt_powrotu_zl, 2),
+                        "Razem (zł)": round(razem, 2),
+                    }
 
-                        nowy_wpis = {
-                            "Pracownik": zalogowany_pracownik,
-                            "Data": str(data),
-                            "Budowa": budowa,
-                            "Nr Rejestracyjny": auto,
-                            "Dojazd Od": str(dojazd_od) if czy_dojazd else "00:00",
-                            "Dojazd Do": str(dojazd_do) if czy_dojazd else "00:00",
-                            "Czas dojazdu (godz)": round(roznica_dojazdu, 2),
-                            "Od": str(godzina_od),
-                            "Do": str(godzina_do),
-                            "Stawka (zł/h)": aktualna_stawka,
-                            "Godziny": round(roznica_czasu, 2),
-                            "Koszt pracy (zł)": round(koszt_pracy, 2),
-                            "Koszt dojazdu (zł)": round(koszt_dojazdu_zl, 2),
-                            "Powrót Od": str(powrot_od) if czy_powrot else "00:00",
-                            "Powrót Do": str(powrot_do) if czy_powrot else "00:00",
-                            "Czas powrotu (godz)": round(roznica_powrotu, 2),
-                            "Koszt powrotu (zł)": round(koszt_powrotu_zl, 2),
-                            "Razem (zł)": round(razem, 2),
-                        }
-
-                        AktualneDane = pd.concat([AktualneDane, pd.DataFrame([nowy_wpis])], ignore_index=True)
-                        zapisz_dane(AktualneDane)
-                        st.success(f"✅ Zapisano pomyślnie! (Rozliczono wg stawki z dnia {data}: {aktualna_stawka} zł/h)")
+                    AktualneDane = pd.concat([AktualneDane, pd.DataFrame([nowy_wpis])], ignore_index=True)
+                    zapisz_dane(AktualneDane)
+                    st.success(f"✅ Zapisano pomyślnie!")
+                    st.rerun()
 
     # --- WIDOK WŁASNYCH WPISÓW PRACOWNIKA ---
     st.markdown("---")
@@ -1192,19 +1166,13 @@ else:
         if not moje_dane.empty:
             mc1, mc2 = st.columns(2)
             mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
-            mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
-            
-            mc3, mc4 = st.columns(2)
-            mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł")
-            mc4.metric("Razem do wypłaty", f"{moje_dane['Razem (zł)'].sum():.2f} zł")
+            mc2.metric("Dojazd + Powrót (czas/koszt)", f"{(moje_dane['Czas dojazdu (godz)'].sum() + moje_dane['Czas powrotu (godz)'].sum()):.2f} h")
             
             st.markdown("---")
-
             st.dataframe(moje_dane, use_container_width=True)
 
             def convert_df_to_excel(df):
                 from io import BytesIO
-
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine="openpyxl") as writer:
                     df.to_excel(writer, index=False, sheet_name="Moje_Rozliczenie")
@@ -1215,9 +1183,7 @@ else:
                 label="📥 Pobierz moje rozliczenie do Excela (.xlsx)",
                 data=excel_data,
                 file_name=f"rozliczenie_{zalogowany_pracownik.lower().replace(' ', '_')}.xlsx",
-                mime=(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                ),
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )
         else:

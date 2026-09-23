@@ -1,4 +1,4 @@
-Haslo,Pracownik,Rola,Email
-1234,Jan Kowalski,Pracownik,jankowalski@firma.pl
-5678,Adam Nowak,Pracownik,adamnowak@firma.pl
-1910,Admin,Admin,admin@firma.pl
+Haslo,Pracownik,Rola,Stawka,StawkaOd,Email
+1234,Jan Kowalski,Pracownik,30.0,2024-01-01,jankowalski@firma.pl
+5678,Adam Nowak,Pracownik,30.0,2024-01-01,adamnowak@firma.pl
+0000,Admin,Admin,30.0,2024-01-01,admin@firma.pl

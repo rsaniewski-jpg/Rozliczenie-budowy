@@ -1,0 +1,2 @@
+Pracownik,Data,Budowa,Nr Rejestracyjny,Dojazd Od,Dojazd Do,Czas dojazdu (godz),Od,Do,Stawka (zł/h),Godziny,Koszt pracy (zł),Koszt dojazdu (zł),Powrót Od,Powrót Do,Czas powrotu (godz),Koszt powrotu (zł),Razem (zł)
+Jan Kowalski,2026-09-23,Budowa ul. Słoneczna 5,DW 12345,07:00:00,08:00:00,1.0,08:00:00,16:00:00,30.0,8.0,240.0,15.0,16:00:00,17:00:00,1.0,15.0,270.0
