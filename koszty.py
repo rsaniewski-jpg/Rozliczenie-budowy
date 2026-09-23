@@ -75,6 +75,7 @@ PLIK_BAZY = "baza_danych.csv"
 PLIK_PRACOWNICY = "baza_pracownikow.csv"
 PLIK_STAWKI = "baza_stawek.csv"
 PLIK_BUDOWY = "baza_budow.csv"
+PLIK_AUTA = "baza_aut.csv"
 
 
 # --- FUNKCJE POMOCNICZE DLA BAZ ---
@@ -109,6 +110,43 @@ def wczytaj_pracownikow():
 
 def zapisz_pracownikow(df):
     df.to_csv(PLIK_PRACOWNICY, index=False)
+
+
+def wczytaj_auta():
+    if os.path.exists(PLIK_AUTA):
+        df = pd.read_csv(PLIK_AUTA, dtype=str)
+        if "Nr Rejestracyjny" in df.columns:
+            auta = df["Nr Rejestracyjny"].dropna().unique().tolist()
+            if auta:
+                return auta
+    domyslne_auta = ["DW 12345", "WA 67890", "PO 11223"]
+    pd.DataFrame({"Nr Rejestracyjny": domyslne_auta, "Opis": ["Autobus firmowy", "Skrzyniowy", "Osobowy"]}).to_csv(PLIK_AUTA, index=False)
+    return domyslne_auta
+
+
+def wczytaj_pelne_dane_aut():
+    if os.path.exists(PLIK_AUTA):
+        return pd.read_csv(PLIK_AUTA, dtype=str)
+    return pd.DataFrame(columns=["Nr Rejestracyjny", "Opis"])
+
+
+def zapisz_auto(nr_rej, opis):
+    df = wczytaj_pelne_dane_aut()
+    if nr_rej not in df["Nr Rejestracyjny"].values:
+        nowy = pd.DataFrame({"Nr Rejestracyjny": [nr_rej], "Opis": [opis]})
+        df = pd.concat([df, nowy], ignore_index=True)
+        df.to_csv(PLIK_AUTA, index=False)
+        return True
+    return False
+
+
+def usun_auto(nr_rej):
+    df = wczytaj_pelne_dane_aut()
+    if nr_rej in df["Nr Rejestracyjny"].values:
+        df = df[df["Nr Rejestracyjny"] != nr_rej]
+        df.to_csv(PLIK_AUTA, index=False)
+        return True
+    return False
 
 
 def wczytaj_stawki():
@@ -213,13 +251,14 @@ def usun_budowe(nazwa_do_usuniecia):
 def wczytaj_dane():
     if os.path.exists(PLIK_BAZY):
         df = pd.read_csv(PLIK_BAZY)
-        kolumny_powrotu = {
+        kolumny_wymagane = {
             "Powrót Od": "00:00",
             "Powrót Do": "00:00",
             "Czas powrotu (godz)": 0.0,
-            "Koszt powrotu (zł)": 0.0
+            "Koszt powrotu (zł)": 0.0,
+            "Nr Rejestracyjny": "Brak"
         }
-        for kol, domyslna_wartosc in kolumny_powrotu.items():
+        for kol, domyslna_wartosc in kolumny_wymagane.items():
             if kol not in df.columns:
                 df[kol] = domyslna_wartosc
         return df
@@ -229,6 +268,7 @@ def wczytaj_dane():
                 "Pracownik",
                 "Data",
                 "Budowa",
+                "Nr Rejestracyjny",
                 "Dojazd Od",
                 "Dojazd Do",
                 "Czas dojazdu (godz)",
@@ -361,6 +401,7 @@ if st.sidebar.button("Wyloguj się"):
 
 dane_systemowe = wczytaj_dane()
 lista_budow = wczytaj_budowy()
+lista_aut = wczytaj_auta()
 
 
 # --- PANEL ADMINISTRATORA ---
@@ -370,11 +411,11 @@ if rola_uzytkownika == "Admin":
     if "menu_admin" not in st.session_state:
         st.session_state.menu_admin = "📊 Raport wszystkich wpisów"
 
-    col_btn1, col_btn2, col_btn3 = st.columns(3)
+    col_btn1, col_btn2, col_btn3, col_btn4 = st.columns(4)
 
     with col_btn1:
         if st.button(
-            "📊 Raport wpisów",
+            "📊 Raport",
             use_container_width=True,
             type=(
                 "primary"
@@ -411,6 +452,19 @@ if rola_uzytkownika == "Admin":
             st.session_state.menu_admin = "🏗️ Zarządzanie Budowami"
             st.rerun()
 
+    with col_btn4:
+        if st.button(
+            "🚗 Auta",
+            use_container_width=True,
+            type=(
+                "primary"
+                if st.session_state.menu_admin == "🚗 Zarządzanie Autami"
+                else "secondary"
+            ),
+        ):
+            st.session_state.menu_admin = "🚗 Zarządzanie Autami"
+            st.rerun()
+
     st.markdown("---")
 
     menu_admin = st.session_state.menu_admin
@@ -431,6 +485,7 @@ if rola_uzytkownika == "Admin":
                     wybrany_pracownik_adm = st.selectbox("Wybierz pracownika", lista_pracownikow_nazwy)
                     data_adm = st.date_input("Data wpisu", value=pd.Timestamp.today().date())
                     budowa_adm = st.selectbox("Wybierz budowę", lista_budow)
+                    auto_adm = st.selectbox("Wybierz numer rejestracyjny auta", lista_aut if lista_aut else ["Brak"])
 
                     st.markdown("🚗 **Czas dojazdu** (50% stawki)")
                     col_da1, col_da2 = st.columns(2)
@@ -499,6 +554,7 @@ if rola_uzytkownika == "Admin":
                                     "Pracownik": wybrany_pracownik_adm,
                                     "Data": str(data_adm),
                                     "Budowa": budowa_adm,
+                                    "Nr Rejestracyjny": auto_adm,
                                     "Dojazd Od": str(dojazd_od_adm),
                                     "Dojazd Do": str(dojazd_do_adm),
                                     "Czas dojazdu (godz)": round(roznica_dojazdu, 2),
@@ -819,6 +875,51 @@ if rola_uzytkownika == "Admin":
         else:
             st.info("Brak aktywnych budów.")
 
+    elif menu_admin == "🚗 Zarządzanie Autami":
+        st.markdown("### 🚗 Dodaj nowy pojazd do floty")
+
+        with st.form("form_dodaj_auto", clear_on_submit=True):
+            col_a1, col_a2 = st.columns(2)
+            with col_a1:
+                nr_rej_input = st.text_input("Numer rejestracyjny (np. DW 12345)")
+            with col_a2:
+                opis_auta_input = st.text_input("Opis / Model pojazdu")
+
+            submit_auto = st.form_submit_button("Dodaj pojazd")
+
+            if submit_auto:
+                czysty_nr = nr_rej_input.strip().upper()
+                if not czysty_nr:
+                    st.warning("⚠️ Podaj numer rejestracyjny.")
+                else:
+                    sukces_auto = zapisz_auto(czysty_nr, opis_auta_input.strip())
+                    if sukces_auto:
+                        st.success(f"✅ Dodano pojazd: {czysty_nr}")
+                        st.rerun()
+                    else:
+                        st.error("❌ Pojazd o takim numerze rejestracyjnym już istnieje.")
+
+        st.markdown("---")
+        st.markdown("### 📋 Lista zarejestrowanych pojazdów")
+        df_pelne_auta = wczytaj_pelne_dane_aut()
+
+        if not df_pelne_auta.empty:
+            for idx, row in df_pelne_auta.iterrows():
+                nr = row["Nr Rejestracyjny"]
+                opis = row.get("Opis", "")
+
+                with st.container(border=True):
+                    col_ia, col_ba = st.columns([7.0, 3.0])
+                    with col_ia:
+                        st.write(f"🚗 **{nr}** | Opis: `{opis}`")
+                    with col_ba:
+                        if st.button("🗑️", key=f"del_auto_{idx}", help="Usuń pojazd", use_container_width=True):
+                            usun_auto(nr)
+                            st.success(f"Usunięto pojazd: {nr}")
+                            st.rerun()
+        else:
+            st.info("Brak aut w bazie.")
+
 else:
     # --- PANEL DLA ZWYKŁEGO PRACOWNIKA ---
     st.subheader(f"Witaj, {zalogowany_pracownik}!")
@@ -837,6 +938,7 @@ else:
 
             data = st.date_input("Data")
             budowa = st.selectbox("Wybierz budowę", lista_budow)
+            auto = st.selectbox("Numer rejestracyjny auta (dojazd)", lista_aut if lista_aut else ["Brak"])
 
             st.markdown("🚗 **Czas dojazdu** (50% stawki)")
             col_d1, col_d2 = st.columns(2)
@@ -910,6 +1012,7 @@ else:
                             "Pracownik": zalogowany_pracownik,
                             "Data": str(data),
                             "Budowa": budowa,
+                            "Nr Rejestracyjny": auto,
                             "Dojazd Od": str(dojazd_od),
                             "Dojazd Do": str(dojazd_do),
                             "Czas dojazdu (godz)": round(roznica_dojazdu, 2),
@@ -946,7 +1049,7 @@ else:
         if not moje_dane.empty:
             mc1, mc2 = st.columns(2)
             mc1.metric("Twoje godziny", f"{moje_dane['Godziny'].sum():.2f} h")
-            mc2.metric("Twój koszt pracy", f"{moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
+            mc2.metric("Twój koszt pracy", f"{moje_d_w_koszt := moje_dane['Koszt pracy (zł)'].sum():.2f} zł")
             
             mc3, mc4 = st.columns(2)
             mc3.metric("Dojazd + Powrót", f"{(moje_dane['Koszt dojazdu (zł)'].sum() + moje_dane['Koszt powrotu (zł)'].sum()):.2f} zł")
