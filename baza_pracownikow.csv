@@ -1,4 +1,4 @@
-Pin,Pracownik,Rola
-1234,Jan Kowalski,Pracownik
-5678,Adam Nowak,Pracownik
-1910,Admin,Admin
+Haslo,Pracownik,Rola,Email
+1234,Jan Kowalski,Pracownik,jankowalski@firma.pl
+5678,Adam Nowak,Pracownik,adamnowak@firma.pl
+1910,Admin,Admin,admin@firma.pl
