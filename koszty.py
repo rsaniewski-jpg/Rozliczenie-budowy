@@ -976,6 +976,9 @@ if rola_uzytkownika == "Admin":
         st.markdown("### 📋 Lista zarejestrowanych pojazdów")
         df_pelne_auta = wczytaj_pelne_dane_aut()
 
+        if "edytowane_auto" not in st.session_state:
+            st.session_state.edytowane_auto = None
+
         if not df_pelne_auta.empty:
             for idx, row in df_pelne_auta.iterrows():
                 nr = row["Nr Rejestracyjny"]
@@ -986,10 +989,59 @@ if rola_uzytkownika == "Admin":
                     with col_ia:
                         st.write(f"🚗 **{nr}** | Opis: `{opis}`")
                     with col_ba:
-                        if st.button("🗑️", key=f"del_auto_{idx}", help="Usuń pojazd", use_container_width=True):
-                            usun_auto(nr)
-                            st.success(f"Usunięto pojazd: {nr}")
+                        sub_au1, sub_au2 = st.columns(2)
+                        with sub_au1:
+                            if st.button("✏️", key=f"edit_auto_{idx}", help="Edytuj pojazd", use_container_width=True):
+                                st.session_state.edytowane_auto = nr
+                                st.rerun()
+                        with sub_au2:
+                            if st.button("🗑️", key=f"del_auto_{idx}", help="Usuń pojazd", use_container_width=True):
+                                usun_auto(nr)
+                                st.success(f"Usunięto pojazd: {nr}")
+                                st.rerun()
+
+            if st.session_state.edytowane_auto:
+                st.markdown("---")
+                stara_rejestracja = st.session_state.edytowane_auto
+                st.markdown(f"### ✏️ Edycja pojazdu: **{stara_rejestracja}**")
+                
+                aktualny_opis_wiersz = df_pelne_auta[df_pelne_auta["Nr Rejestracyjny"] == stara_rejestracja]
+                domyslny_opis = aktualny_opis_wiersz.iloc[0].get("Opis", "") if not aktualny_opis_wiersz.empty else ""
+
+                with st.form("form_edycja_auta"):
+                    nowy_nr_rej = st.text_input("Numer rejestracyjny", value=stara_rejestracja)
+                    nowy_opis = st.text_input("Opis / Model pojazdu", value=domyslny_opis)
+                    
+                    c_zapisz_a, c_anuluj_a = st.columns(2)
+                    with c_zapisz_a:
+                        btn_zapisz_a = st.form_submit_button("💾 Zapisz zmiany", use_container_width=True)
+                    with c_anuluj_a:
+                        btn_anuluj_a = st.form_submit_button("❌ Anuluj", use_container_width=True)
+
+                    if btn_zapisz_a:
+                        czysty_nowy_nr = nowy_nr_rej.strip().upper()
+                        if not czysty_nowy_nr:
+                            st.warning("Numer rejestracyjny nie może być pusty!")
+                        elif czysty_nowy_nr != stara_rejestracja and czysty_nowy_nr in df_pelne_auta["Nr Rejestracyjny"].values:
+                            st.error("Pojazd o takim numerze rejestracyjnym już istnieje w bazie!")
+                        else:
+                            df_pelne_auta.loc[df_pelne_auta["Nr Rejestracyjny"] == stara_rejestracja, "Nr Rejestracyjny"] = czysty_nowy_nr
+                            df_pelne_auta.loc[df_pelne_auta["Nr Rejestracyjny"] == czysty_nowy_nr, "Opis"] = nowy_opis.strip()
+                            df_pelne_auta.to_csv(PLIK_AUTA, index=False)
+
+                            if czysty_nowy_nr != stara_rejestracja:
+                                df_dane = wczytaj_dane()
+                                if not df_dane.empty and "Nr Rejestracyjny" in df_dane.columns:
+                                    df_dane.loc[df_dane["Nr Rejestracyjny"] == stara_rejestracja, "Nr Rejestracyjny"] = czysty_nowy_nr
+                                    zapisz_dane(df_dane)
+
+                            st.session_state.edytowane_auto = None
+                            st.success("✅ Zaktualizowano pojazd pomyślnie!")
                             st.rerun()
+
+                    if btn_anuluj_a:
+                        st.session_state.edytowane_auto = None
+                        st.rerun()
         else:
             st.info("Brak aut w bazie.")
 
