@@ -813,12 +813,51 @@ if rola_uzytkownika == "Admin":
             )
 
             st.markdown("### 📊 Podsumowanie czasu i kosztów")
-            
-            # Podsumowanie administratora — tylko czas pracy, dojazdów i powrotów
-            suma_godzin_admin = pd.to_numeric(dane_systemowe.get("Godziny", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
-            suma_dojazdow_admin = pd.to_numeric(dane_systemowe.get("Czas dojazdu (godz)", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
-            suma_powrotow_admin = pd.to_numeric(dane_systemowe.get("Czas powrotu (godz)", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
-            
+
+            # Wybór budowy wpływa na wartości widoczne w podsumowaniu.
+            if "Budowa" in dane_systemowe.columns:
+                budowy_do_podsumowania = (
+                    dane_systemowe["Budowa"]
+                    .dropna()
+                    .astype(str)
+                    .loc[lambda s: s.str.strip() != ""]
+                    .unique()
+                    .tolist()
+                )
+            else:
+                budowy_do_podsumowania = []
+
+            budowy_do_podsumowania = sorted(budowy_do_podsumowania)
+            opcje_budowy_podsumowania = ["🏗️ Wszystkie budowy"] + budowy_do_podsumowania
+
+            wybrana_budowa_podsumowania = st.selectbox(
+                "🏗️ Wybierz budowę do podsumowania:",
+                opcje_budowy_podsumowania,
+               key="admin_budowa_podsumowanie"
+            )
+
+            if wybrana_budowa_podsumowania == "🏗️ Wszystkie budowy":
+                dane_podsumowania_admin = dane_systemowe
+            else:
+                dane_podsumowania_admin = dane_systemowe[
+                    dane_systemowe["Budowa"] == wybrana_budowa_podsumowania
+                ]
+
+            suma_godzin_admin = pd.to_numeric(
+                dane_podsumowania_admin.get("Godziny", pd.Series(dtype=float)),
+                errors="coerce"
+            ).fillna(0).sum()
+
+            suma_dojazdow_admin = pd.to_numeric(
+                dane_podsumowania_admin.get("Czas dojazdu (godz)", pd.Series(dtype=float)),
+                errors="coerce"
+            ).fillna(0).sum()
+
+            suma_powrotow_admin = pd.to_numeric(
+                dane_podsumowania_admin.get("Czas powrotu (godz)", pd.Series(dtype=float)),
+                errors="coerce"
+            ).fillna(0).sum()
+
             pod1, pod2, pod3 = st.columns(3)
             with pod1:
                 st.metric("⏱️ Łączna ilość godzin", f"{suma_godzin_admin:.2f} h")
@@ -1645,7 +1684,7 @@ else:
                     st.rerun()
 
     st.markdown("---")
-    # st.subheader("Moje wpisy")
+    st.subheader("Moje wpisy")
     
     if "edytowany_moj_wpis_id" not in st.session_state:
         st.session_state.edytowany_moj_wpis_id = None
