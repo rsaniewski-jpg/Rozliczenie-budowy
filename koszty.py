@@ -1771,6 +1771,27 @@ else:
     moje_dane = dane_systemowe[dane_systemowe["Pracownik"] == zalogowany_pracownik]
 
     if not moje_dane.empty:
+        # --- PRZYCISK EKSPORTU DLA PRACOWNIKA (BEZ STAWEK I KOSZTÓW) ---
+        def generuj_excel_pracownika(df_prac):
+            output = BytesIO()
+            # Usuwamy kolumny ze stawkami oraz kosztami
+            kolumny_do_odrzucenia = ["Stawka (zł/h)", "Koszt pracy (zł)", "Koszt dojazdu (zł)", "Koszt powrotu (zł)", "Razem (zł)"]
+            df_czyste = df_prac.drop(columns=[k for k in kolumny_do_odrzucenia if k in df_prac.columns], errors="ignore")
+            
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df_czyste.to_excel(writer, index=False, sheet_name="Moje_Wpisy")
+            return output.getvalue()
+
+        excel_pracownika_data = generuj_excel_pracownika(moje_dane)
+        st.download_button(
+            label="📥 Pobierz moje wpisy do Excela (.xlsx)",
+            data=excel_pracownika_data,
+            file_name=f"moje_wpisy_{zalogowany_pracownik.lower().replace(' ', '_')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+        st.markdown("---")
+
         for idx, row in moje_dane.iterrows():
             status_zatw = row.get("Zatwierdzone", "Nie")
             status_badge = "🟢 **Zatwierdzone**" if status_zatw == "Tak" else "🟠 **Oczekuje na zatwierdzenie**"
@@ -1781,8 +1802,7 @@ else:
                     st.markdown(
                         f"📅 `{row['Data']}` | 🏗️ `{row['Budowa']}` | {status_badge}\n"
                         f"⏱️ Praca: `{row['Od']} - {row['Do']}` (**{row['Godziny']}h**)\n"
-                        f"🚗 Dojazd: `{row['Nr Rejestracyjny']}` | 🏠 Powrót: `{row['Nr Rejestracyjny Powrót']}`\n"
-                        f"💰 **Razem: {row['Razem (zł)']} zł**"
+                        f"🚗 Dojazd: `{row['Nr Rejestracyjny']}` | 🏠 Powrót: `{row['Nr Rejestracyjny Powrót']}`"
                     )
                 with col_m2:
                     sub_m1, sub_m2 = st.columns(2)
