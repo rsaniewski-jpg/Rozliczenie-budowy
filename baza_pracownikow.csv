@@ -1,4 +1,4 @@
 Haslo,Pracownik,Rola,Stawka,StawkaOd,Email
-1234,Jan Kowalski,Pracownik,30.0,2024-01-01,jankowalski@firma.pl
-5678,Adam Nowak,Pracownik,30.0,2024-01-01,adamnowak@firma.pl
-0000,Admin,Admin,30.0,2024-01-01,admin@firma.pl
+$2b$12$U1OAKF1l8bHvZdi4h6JDCeKxu/1zquv.cRM6JTPQam/XkOak1q2Ou,Jan Kowalski,Pracownik,30.0,2024-01-01,jankowalski@firma.pl
+$2b$12$G1bMnONa5A8l5dgUMpb5e.FQd2QOaRISSiSt4cNnKyzXG8plLHKb6,Adam Nowak,Pracownik,30.0,2024-01-01,adamnowak@firma.pl
+$2b$12$CVoeYYmlTifyuEjgLvQ2AOeEiE1m1vV5Mqr7I5cQH85x7ZoxrqZju,Admin,Admin,30.0,2024-01-01,admin@firma.pl
