@@ -785,16 +785,50 @@ if rola_uzytkownika == "Admin":
 
         dane_systemowe = wczytaj_dane()
         if not dane_systemowe.empty:
-            mc_a1, mc_a2, mc_a3 = st.columns(3)
-            mc_a1.metric("Łączne godziny", f"{dane_systemowe['Godziny'].sum():.2f} h")
-            mc_a2.metric("Koszt pracy", f"{dane_systemowe['Koszt pracy (zł)'].sum():.2f} zł")
-            mc_a3.metric("Koszt dojazdu", f"{dane_systemowe['Koszt dojazdu (zł)'].sum():.2f} zł")
+            # --- PODSUMOWANIE ADMINISTRATORA ---
+            # Ten sam styl kart/podsumowania co w panelu pracownika.
+            suma_godzin_adm = pd.to_numeric(
+                dane_systemowe.get("Godziny", pd.Series(dtype=float)), errors="coerce"
+            ).fillna(0).sum()
+            suma_koszt_pracy_adm = pd.to_numeric(
+                dane_systemowe.get("Koszt pracy (zł)", pd.Series(dtype=float)), errors="coerce"
+            ).fillna(0).sum()
+            suma_koszt_dojazdu_adm = pd.to_numeric(
+                dane_systemowe.get("Koszt dojazdu (zł)", pd.Series(dtype=float)), errors="coerce"
+            ).fillna(0).sum()
+            suma_koszt_powrotu_adm = pd.to_numeric(
+                dane_systemowe.get("Koszt powrotu (zł)", pd.Series(dtype=float)), errors="coerce"
+            ).fillna(0).sum()
+            suma_lacznego_kosztu_adm = pd.to_numeric(
+                dane_systemowe.get("Razem (zł)", pd.Series(dtype=float)), errors="coerce"
+            ).fillna(0).sum()
+            suma_czasu_dojazdu_adm = pd.to_numeric(
+                dane_systemowe.get("Czas dojazdu (godz)", pd.Series(dtype=float)), errors="coerce"
+            ).fillna(0).sum()
+            suma_czasu_powrotu_adm = pd.to_numeric(
+                dane_systemowe.get("Czas powrotu (godz)", pd.Series(dtype=float)), errors="coerce"
+            ).fillna(0).sum()
+            suma_lacznego_czasu_adm = (
+                suma_godzin_adm + suma_czasu_dojazdu_adm + suma_czasu_powrotu_adm
+            )
+
+            st.markdown("### 📊 Podsumowanie czasu i kosztów")
             
-            mc_a4, mc_a5 = st.columns(2)
-            mc_a4.metric("Koszt powrotu", f"{dane_systemowe['Koszt powrotu (zł)'].sum():.2f} zł")
-            mc_a5.metric("Łączny koszt", f"{dane_systemowe['Razem (zł)'].sum():.2f} zł")
+            # Podsumowanie administratora — tylko czas pracy, dojazdów i powrotów
+            suma_godzin_admin = pd.to_numeric(dane_systemowe.get("Godziny", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
+            suma_dojazdow_admin = pd.to_numeric(dane_systemowe.get("Czas dojazdu (godz)", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
+            suma_powrotow_admin = pd.to_numeric(dane_systemowe.get("Czas powrotu (godz)", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
             
+            pod1, pod2, pod3 = st.columns(3)
+            with pod1:
+                st.metric("⏱️ Łączna ilość godzin", f"{suma_godzin_admin:.2f} h")
+            with pod2:
+                st.metric("🚗 Łączny czas dojazdów", f"{suma_dojazdow_admin:.2f} h")
+            with pod3:
+                st.metric("🏠 Łączny czas powrotów", f"{suma_powrotow_admin:.2f} h")
+
             st.markdown("---")
+
             st.markdown("### 🛠️ Zarządzanie wpisami (Zatwierdzanie / Edycja / Usuwanie)")
 
             df_pracownicy_adm = wczytaj_pracownikow()
@@ -1611,7 +1645,7 @@ else:
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("Moje wpisy")
+    # st.subheader("Moje wpisy")
     
     if "edytowany_moj_wpis_id" not in st.session_state:
         st.session_state.edytowany_moj_wpis_id = None
@@ -1769,6 +1803,32 @@ else:
             st.session_state.edytowany_moj_wpis_id = None
 
     moje_dane = dane_systemowe[dane_systemowe["Pracownik"] == zalogowany_pracownik]
+
+    # --- PODSUMOWANIE CZASU PRACY PRACOWNIKA ---
+    # Pokazujemy wyłącznie dane dotyczące czasu. Stawki i koszty pozostają niewidoczne dla pracownika.
+    if not moje_dane.empty:
+        suma_godzin_pracy = pd.to_numeric(
+            moje_dane.get("Godziny", pd.Series(dtype=float)), errors="coerce"
+        ).fillna(0).sum()
+        suma_czasu_dojazdu = pd.to_numeric(
+            moje_dane.get("Czas dojazdu (godz)", pd.Series(dtype=float)), errors="coerce"
+        ).fillna(0).sum()
+        suma_czasu_powrotu = pd.to_numeric(
+            moje_dane.get("Czas powrotu (godz)", pd.Series(dtype=float)), errors="coerce"
+        ).fillna(0).sum()
+        suma_lacznego_czasu = suma_godzin_pracy + suma_czasu_dojazdu + suma_czasu_powrotu
+
+        st.markdown("### 📊 Moje podsumowanie czasu")
+        pod1, pod2, pod3, pod4 = st.columns(4)
+        pod1.metric("⏱️ Przepracowane", f"{suma_godzin_pracy:.2f} h")
+        pod2.metric("🚗 Dojazdy", f"{suma_czasu_dojazdu:.2f} h")
+        pod3.metric("🏠 Powroty", f"{suma_czasu_powrotu:.2f} h")
+        pod4.metric("🕐 Łącznie", f"{suma_lacznego_czasu:.2f} h")
+
+        st.caption(
+            "Podsumowanie obejmuje wszystkie Twoje zapisane wpisy i jest aktualizowane automatycznie po dodaniu lub edycji wpisu."
+        )
+        st.markdown("---")
 
     if not moje_dane.empty:
         # --- PRZYCISK EKSPORTU DLA PRACOWNIKA (BEZ STAWEK I KOSZTÓW) ---
