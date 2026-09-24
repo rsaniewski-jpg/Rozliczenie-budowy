@@ -1,3 +1,4 @@
 Pracownik,Data,Budowa,Nr Rejestracyjny,Dojazd Od,Dojazd Do,Czas dojazdu (godz),Od,Do,Stawka (zł/h),Godziny,Koszt pracy (zł),Koszt dojazdu (zł),Powrót Od,Powrót Do,Czas powrotu (godz),Koszt powrotu (zł),Razem (zł),Nr Rejestracyjny Powrót,Zatwierdzone
-Jan Kowalski,2026-09-23,Budowa ul. Słoneczna 5,DW 12345,07:00:00,08:00:00,1.0,08:00:00,16:00:00,30.0,8.0,240.0,15.0,16:00:00,17:00:00,1.0,15.0,270.0,Brak,Tak
-Jan Kowalski,2026-09-22,Budowa ul. Słoneczna 5,DW 12345,07:00:00,08:00:00,1.0,08:00:00,16:00:00,30.0,8.0,240.0,15.0,16:00:00,17:00:00,1.0,15.0,270.0,PO 11223,Nie
+Jan Kowalski,2026-09-23,Budowa ul. Słoneczna 5,DW 12345,07:00:00,07:30:00,0.5,07:30:00,16:54:00,30.0,9.4,282.0,7.5,00:00,00:00,0.0,0.0,289.5,Brak,Nie
+Jan Kowalski,2026-09-22,Budowa ul. Słoneczna 5,DW 12345,07:00:00,08:30:00,1.5,08:00:00,15:45:00,30.0,7.75,232.5,22.5,15:30:00,17:45:00,2.25,33.75,288.75,PO 11223,Nie
+Jan Kowalski,2026-09-24,Osiedle Parkowe - Blok A,WA 67890,07:00:00,08:30:00,1.5,08:30:00,16:25:00,30.0,7.92,237.5,22.5,16:25:00,17:25:00,1.0,15.0,275.0,PO 11223,Nie

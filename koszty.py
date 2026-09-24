@@ -615,6 +615,33 @@ if rola_uzytkownika == "Admin":
     menu_admin = st.session_state.menu_admin
 
     if menu_admin == "📊 Raport wszystkich wpisów":
+        # Styl ramek w raporcie administratora:
+        # - ramki wpisów: niebieskie obramowanie,
+        # - pole wyboru budowy: również niebieskie obramowanie.
+        st.markdown(
+            """
+            <style>
+            /* Niebieskie ramki kart wpisów */
+            [data-testid="stVerticalBlockBorderWrapper"] {
+                border: 1px solid #0066cc !important;
+                border-radius: 8px !important;
+            }
+
+            /* Niebieska ramka pola wyboru budowy */
+            div[data-baseweb="select"] > div {
+                border: 1px solid #0066cc !important;
+                box-shadow: none !important;
+            }
+
+            div[data-baseweb="select"] > div:focus-within {
+                border: 1px solid #0066cc !important;
+                box-shadow: 0 0 0 1px #0066cc !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
         st.markdown("### Raport godzin i kosztów całej firmy")
 
         with st.expander("➕ Dopisz godziny dla pracownika (kliknij, aby rozwinąć)"):
@@ -833,7 +860,7 @@ if rola_uzytkownika == "Admin":
             wybrana_budowa_podsumowania = st.selectbox(
                 "🏗️ Wybierz budowę do podsumowania:",
                 opcje_budowy_podsumowania,
-               key="admin_budowa_podsumowanie"
+                key="admin_budowa_podsumowanie"
             )
 
             if wybrana_budowa_podsumowania == "🏗️ Wszystkie budowy":
@@ -905,37 +932,50 @@ if rola_uzytkownika == "Admin":
                         
                         d_od_val = pd.to_datetime(wiersz_ed.get("Dojazd Od", "07:00")).time() if czy_byl_dojazd else pd.to_datetime("07:00").time()
                         d_do_val = pd.to_datetime(wiersz_ed.get("Dojazd Do", "08:00")).time() if czy_byl_dojazd else pd.to_datetime("08:00").time()
-                        
+                        p_od_val = pd.to_datetime(wiersz_ed.get("Od", "08:00")).time()
+                        p_do_val = pd.to_datetime(wiersz_ed.get("Do", "16:00")).time()
+
+                        klucz_adm_doj_do = f"adm_edit_doj_do_{e_id}"
+                        klucz_adm_praca_od = f"adm_edit_praca_od_{e_id}"
+                        klucz_adm_praca_do = f"adm_edit_praca_do_{e_id}"
+                        klucz_adm_pow_od = f"adm_edit_pow_od_{e_id}"
+
+                        if klucz_adm_praca_od not in st.session_state:
+                            st.session_state[klucz_adm_praca_od] = p_od_val
+                        if klucz_adm_praca_do not in st.session_state:
+                            st.session_state[klucz_adm_praca_do] = p_do_val
+
                         col_ed1, col_ed2 = st.columns(2)
                         with col_ed1:
-                            e_doj_od = st.time_input("Dojazd od", value=d_od_val)
+                            e_doj_od = st.time_input("Dojazd od", value=d_od_val, key=f"adm_edit_doj_od_{e_id}")
                         with col_ed2:
-                            e_doj_do = st.time_input("Dojazd do", value=d_do_val)
+                            e_doj_do = st.time_input("Dojazd do", value=d_do_val, key=klucz_adm_doj_do)
                         e_auto_d = st.selectbox("Auto na dojazd", ["Brak"] + lista_aut, index=(["Brak"] + lista_aut).index(akt_auto_d) if akt_auto_d in (["Brak"] + lista_aut) else 0)
 
                         st.markdown("⏱️ **Czas pracy na budowie**")
-                        p_od_val = pd.to_datetime(wiersz_ed.get("Od", "08:00")).time()
-                        p_do_val = pd.to_datetime(wiersz_ed.get("Do", "16:00")).time()
-                        
+
                         col_ed3, col_ed4 = st.columns(2)
                         with col_ed3:
-                            e_praca_od = st.time_input("Praca od", value=p_od_val)
+                            e_praca_od = st.time_input("Praca od", value=p_od_val, key=klucz_adm_praca_od)
                         with col_ed4:
-                            e_praca_do = st.time_input("Praca do", value=p_do_val)
+                            e_praca_do = st.time_input("Praca do", value=p_do_val, key=klucz_adm_praca_do)
 
                         akt_auto_p = wiersz_ed.get("Nr Rejestracyjny Powrót", "Brak")
                         czy_byl_powrot = akt_auto_p != "Brak" and pd.notna(akt_auto_p)
                         e_czy_pow = st.checkbox("🏠 Powrót firmowym autem", value=czy_byl_powrot)
 
-                        pow_od_val = pd.to_datetime(wiersz_ed.get("Powrót Od", "16:00")).time() if czy_byl_powrot else pd.to_datetime("16:00").time()
+                        if klucz_adm_pow_od not in st.session_state:
+                            klucz_adm_pow_od_wartosc = pd.to_datetime(wiersz_ed.get("Powrót Od", "16:00")).time() if czy_byl_powrot else pd.to_datetime("16:00").time()
+                            st.session_state[klucz_adm_pow_od] = klucz_adm_pow_od_wartosc
+
+                        pow_od_val = st.session_state[klucz_adm_pow_od]
                         pow_do_val = pd.to_datetime(wiersz_ed.get("Powrót Do", "17:00")).time() if czy_byl_powrot else pd.to_datetime("17:00").time()
 
                         col_ed5, col_ed6 = st.columns(2)
                         with col_ed5:
-                            e_pow_od = st.time_input("Powrót od", value=pow_od_val)
+                            e_pow_od = st.time_input("Powrót od", value=pow_od_val, key=klucz_adm_pow_od)
                         with col_ed6:
-                            e_pow_do = st.time_input("Powrót do", value=pow_do_val)
-                        e_auto_p = st.selectbox("Auto na powrót", ["Brak"] + lista_aut, index=(["Brak"] + lista_aut).index(akt_auto_p) if akt_auto_p in (["Brak"] + lista_aut) else 0)
+                            e_pow_do = st.time_input("Powrót do", value=pow_do_val, key=f"adm_edit_pow_do_{e_id}")
 
                         col_ez1, col_ez2 = st.columns(2)
                         with col_ez1:
@@ -944,6 +984,14 @@ if rola_uzytkownika == "Admin":
                             submit_anuluj_edycje = st.form_submit_button("❌ Anuluj", use_container_width=True)
 
                         if submit_edytuj_wpis:
+                            # Automatyczne powiązanie godzin przy zapisie edycji:
+                            # koniec dojazdu -> początek pracy
+                            # koniec pracy -> początek powrotu
+                            if e_czy_doj:
+                                e_praca_od = e_doj_do
+                            if e_czy_pow:
+                                e_pow_od = e_praca_do
+
                             data_rozp_budowy_str = pobierz_date_rozpoczecia_budowy(e_budowa)
                             data_rozp_dt = pd.to_datetime(data_rozp_budowy_str).date()
 
@@ -1040,16 +1088,13 @@ if rola_uzytkownika == "Admin":
                     status_zatw = row.get("Zatwierdzone", "Nie")
                     status_badge = "🟢 **Zatwierdzone**" if status_zatw == "Tak" else "🟠 **Oczekuje**"
                     
-                    koszt_pracy_val = f"{row['Koszt pracy (zł)']:.2f}" if "Koszt pracy (zł)" in row and pd.notna(row["Koszt pracy (zł)"]) else "0.00"
-
                     with st.container(border=True):
                         col_tw1, col_tw2 = st.columns([7.5, 2.5])
                         with col_tw1:
                             st.markdown(
                                 f"**ID: {idx}** | {status_badge} | 👤 **{row['Pracownik']}** | 📅 `{row['Data']}` | 🏗️ `{row['Budowa']}`\n"
-                                f"⏱️ Praca: `{row['Od']} - {row['Do']}` (**{row['Godziny']}h**, {koszt_pracy_val} zł) | "
-                                f"🚗 Dojazd: `{row['Nr Rejestracyjny']}` | 🏠 Powrót: `{row['Nr Rejestracyjny Powrót']}` | "
-                                f"💰 **Razem: {row['Razem (zł)']} zł**"
+                                f"⏱️ Praca: `{row['Od']} - {row['Do']}` | "
+                                f"🚗 Dojazd: `{row['Nr Rejestracyjny']}` | 🏠 Powrót: `{row['Nr Rejestracyjny Powrót']}`"
                             )
                         with col_tw2:
                             sub_tw0, sub_tw1, sub_tw2 = st.columns(3)
@@ -1712,37 +1757,50 @@ else:
                 
                 em_d_od_val = pd.to_datetime(w_ed_moj.get("Dojazd Od", "07:00")).time() if em_czy_byl_dojazd else pd.to_datetime("07:00").time()
                 em_d_do_val = pd.to_datetime(w_ed_moj.get("Dojazd Do", "08:00")).time() if em_czy_byl_dojazd else pd.to_datetime("08:00").time()
-                
+                em_p_od_val = pd.to_datetime(w_ed_moj.get("Od", "08:00")).time()
+                em_p_do_val = pd.to_datetime(w_ed_moj.get("Do", "16:00")).time()
+
+                klucz_prac_doj_do = f"prac_edit_doj_do_{e_m_id}"
+                klucz_prac_praca_od = f"prac_edit_praca_od_{e_m_id}"
+                klucz_prac_praca_do = f"prac_edit_praca_do_{e_m_id}"
+                klucz_prac_pow_od = f"prac_edit_pow_od_{e_m_id}"
+
+                if klucz_prac_praca_od not in st.session_state:
+                    st.session_state[klucz_prac_praca_od] = em_p_od_val
+                if klucz_prac_praca_do not in st.session_state:
+                    st.session_state[klucz_prac_praca_do] = em_p_do_val
+
                 col_em1, col_em2 = st.columns(2)
                 with col_em1:
-                    em_doj_od = st.time_input("Dojazd od", value=em_d_od_val)
+                    em_doj_od = st.time_input("Dojazd od", value=em_d_od_val, key=f"prac_edit_doj_od_{e_m_id}")
                 with col_em2:
-                    em_doj_do = st.time_input("Dojazd do", value=em_d_do_val)
+                    em_doj_do = st.time_input("Dojazd do", value=em_d_do_val, key=klucz_prac_doj_do)
                 em_auto_d = st.selectbox("Auto na dojazd", ["Brak"] + lista_aut, index=(["Brak"] + lista_aut).index(em_akt_auto_d) if em_akt_auto_d in (["Brak"] + lista_aut) else 0)
 
                 st.markdown("⏱️ **Czas pracy na budowie**")
-                em_p_od_val = pd.to_datetime(w_ed_moj.get("Od", "08:00")).time()
-                em_p_do_val = pd.to_datetime(w_ed_moj.get("Do", "16:00")).time()
-                
+
                 col_em3, col_em4 = st.columns(2)
                 with col_em3:
-                    em_praca_od = st.time_input("Praca od", value=em_p_od_val)
+                    em_praca_od = st.time_input("Praca od", value=em_p_od_val, key=klucz_prac_praca_od)
                 with col_em4:
-                    em_praca_do = st.time_input("Praca do", value=em_p_do_val)
+                    em_praca_do = st.time_input("Praca do", value=em_p_do_val, key=klucz_prac_praca_do)
 
                 em_akt_auto_p = w_ed_moj.get("Nr Rejestracyjny Powrót", "Brak")
                 em_czy_byl_powrot = em_akt_auto_p != "Brak" and pd.notna(em_akt_auto_p)
                 em_czy_pow = st.checkbox("🏠 Powrót firmowym autem", value=em_czy_byl_powrot)
 
-                em_pow_od_val = pd.to_datetime(w_ed_moj.get("Powrót Od", "16:00")).time() if em_czy_byl_powrot else pd.to_datetime("16:00").time()
+                if klucz_prac_pow_od not in st.session_state:
+                    klucz_prac_pow_od_wartosc = pd.to_datetime(w_ed_moj.get("Powrót Od", "16:00")).time() if em_czy_byl_powrot else pd.to_datetime("16:00").time()
+                    st.session_state[klucz_prac_pow_od] = klucz_prac_pow_od_wartosc
+
+                em_pow_od_val = st.session_state[klucz_prac_pow_od]
                 em_pow_do_val = pd.to_datetime(w_ed_moj.get("Powrót Do", "17:00")).time() if em_czy_byl_powrot else pd.to_datetime("17:00").time()
 
                 col_em5, col_em6 = st.columns(2)
                 with col_em5:
-                    em_pow_od = st.time_input("Powrót od", value=em_pow_od_val)
+                    em_pow_od = st.time_input("Powrót od", value=em_pow_od_val, key=klucz_prac_pow_od)
                 with col_em6:
-                    em_pow_do = st.time_input("Powrót do", value=em_pow_do_val)
-                em_auto_p = st.selectbox("Auto na powrót", ["Brak"] + lista_aut, index=(["Brak"] + lista_aut).index(em_akt_auto_p) if em_akt_auto_p in (["Brak"] + lista_aut) else 0)
+                    em_pow_do = st.time_input("Powrót do", value=em_pow_do_val, key=f"prac_edit_pow_do_{e_m_id}")
 
                 col_emz1, col_emz2 = st.columns(2)
                 with col_emz1:
@@ -1751,6 +1809,14 @@ else:
                     submit_anuluj_moj = st.form_submit_button("❌ Anuluj", use_container_width=True)
 
                 if submit_zapisz_moj:
+                    # Automatyczne powiązanie godzin przy zapisie edycji:
+                    # koniec dojazdu -> początek pracy
+                    # koniec pracy -> początek powrotu
+                    if em_czy_doj:
+                        em_praca_od = em_doj_do
+                    if em_czy_pow:
+                        em_pow_od = em_praca_do
+
                     data_rozp_budowy_str = pobierz_date_rozpoczecia_budowy(em_budowa)
                     data_rozp_dt = pd.to_datetime(data_rozp_budowy_str).date()
 
